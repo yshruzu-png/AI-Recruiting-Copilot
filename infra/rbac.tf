@@ -20,10 +20,11 @@ resource "azurerm_role_assignment" "me_search_service" {
   principal_id         = local.me
 }
 
-resource "azurerm_role_assignment" "me_ai_user" {
-  scope                = azapi_resource.foundry.id
-  role_definition_name = "Azure AI User"
-  principal_id         = local.me
+resource "azurerm_role_assignment" "me_ai_developer" {
+  scope              = azapi_resource.foundry.id
+  # Built-in "Azure AI Developer" role (build agents, call models, use Foundry projects)
+  role_definition_id = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/64702f94-c441-49e6-a78b-ef80e0188fee"
+  principal_id       = local.me
 }
 
 resource "azurerm_role_assignment" "me_cog_user" {

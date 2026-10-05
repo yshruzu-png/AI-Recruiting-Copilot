@@ -15,7 +15,6 @@ infra/*.tfstate
 infra/*.tfstate.*
 infra/*.tfvars
 !infra/terraform.tfvars.example
-infra/.terraform.lock.hcl
 infra/tfplan
 
 # Generated data (regenerate with: python scripts/generate_synthetic_data.py)

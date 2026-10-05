@@ -95,7 +95,7 @@ resource "azurerm_key_vault" "kv" {
   resource_group_name        = azurerm_resource_group.rg.name
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   sku_name                   = "standard"
-  enable_rbac_authorization  = true
+  rbac_authorization_enabled = true
   soft_delete_retention_days = 7
   purge_protection_enabled   = false
   tags                       = var.tags
@@ -147,6 +147,8 @@ resource "azapi_resource" "project" {
       description = "Portfolio project: resume ingestion, recruiting agent, screening workflow"
     }
   }
+
+  depends_on = [azapi_resource.embedding]
 }
 
 resource "azapi_resource" "chat" {
