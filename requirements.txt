@@ -1,0 +1,8 @@
+# Week 1: synthetic data + upload
+faker>=30.0
+reportlab>=4.2
+python-docx>=1.1
+pillow>=10.4
+azure-identity>=1.19
+azure-storage-blob>=12.23
+python-dotenv>=1.0

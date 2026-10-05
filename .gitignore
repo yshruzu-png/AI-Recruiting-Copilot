@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secrets & local config
+.env
+*.env
+!.env.example
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfvars
+!infra/terraform.tfvars.example
+infra/.terraform.lock.hcl
+infra/tfplan
+
+# Generated data (regenerate with: python scripts/generate_synthetic_data.py)
+data/synthetic/
+
+# OS
+.DS_Store
