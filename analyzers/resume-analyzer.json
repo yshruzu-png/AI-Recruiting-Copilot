@@ -1,0 +1,149 @@
+{
+  "description": "Extracts a structured candidate profile from a resume (PDF, DOCX or scanned image)",
+  "baseAnalyzerId": "prebuilt-document",
+  "models": {
+    "completion": "gpt-4.1-mini",
+    "embedding": "text-embedding-3-small"
+  },
+  "config": {
+    "returnDetails": true,
+    "estimateFieldSourceAndConfidence": true
+  },
+  "fieldSchema": {
+    "name": "CandidateProfile",
+    "description": "Structured profile of a job candidate taken from their resume",
+    "fields": {
+      "CandidateName": {
+        "type": "string",
+        "method": "extract",
+        "description": "Full name of the candidate, usually the large heading at the top"
+      },
+      "Email": {
+        "type": "string",
+        "method": "extract",
+        "description": "Candidate email address"
+      },
+      "Phone": {
+        "type": "string",
+        "method": "extract",
+        "description": "Candidate phone number"
+      },
+      "Location": {
+        "type": "string",
+        "method": "extract",
+        "description": "City and province/state where the candidate lives"
+      },
+      "Headline": {
+        "type": "string",
+        "method": "generate",
+        "description": "The candidate's current or most recent job title"
+      },
+      "Skills": {
+        "type": "array",
+        "method": "extract",
+        "description": "Every technical skill, tool or technology listed in the resume's Skills section, one per item, exactly as written. Keep multi-word names together as one item (e.g. 'NIST CSF', 'Azure Data Factory')",
+        "items": {
+          "type": "string",
+          "method": "extract"
+        }
+      },
+      "Certifications": {
+        "type": "array",
+        "method": "extract",
+        "description": "Professional certifications listed in the Certifications section only, written exactly as they appear. Do not include degrees, diplomas or bootcamp certificates from the Education section. Empty if there is no Certifications section",
+        "items": {
+          "type": "string",
+          "method": "extract"
+        }
+      },
+      "WorkHistory": {
+        "type": "array",
+        "method": "extract",
+        "description": "Each job in the Experience section",
+        "items": {
+          "type": "object",
+          "properties": {
+            "JobTitle": {
+              "type": "string",
+              "method": "extract",
+              "description": "Job title"
+            },
+            "Company": {
+              "type": "string",
+              "method": "extract",
+              "description": "Employer name"
+            },
+            "StartDate": {
+              "type": "string",
+              "method": "extract",
+              "description": "Start month and year as written, e.g. Mar 2023"
+            },
+            "EndDate": {
+              "type": "string",
+              "method": "extract",
+              "description": "End month and year as written, or Present"
+            }
+          }
+        }
+      },
+      "TotalYearsExperience": {
+        "type": "integer",
+        "method": "generate",
+        "description": "Total years of professional experience, calculated by adding up the duration of every job in the work history (treat Present as October 2026; do not count gaps between jobs). Round to the nearest whole year"
+      },
+      "Education": {
+        "type": "array",
+        "method": "extract",
+        "description": "Each degree, diploma or certificate program in the Education section",
+        "items": {
+          "type": "object",
+          "properties": {
+            "Degree": {
+              "type": "string",
+              "method": "extract",
+              "description": "Degree or program name"
+            },
+            "Institution": {
+              "type": "string",
+              "method": "extract",
+              "description": "School, university or bootcamp"
+            },
+            "GraduationYear": {
+              "type": "integer",
+              "method": "extract",
+              "description": "Year of graduation"
+            }
+          }
+        }
+      },
+      "RoleFamily": {
+        "type": "string",
+        "method": "classify",
+        "description": "The candidate's primary career track based on their titles and skills",
+        "enum": [
+          "data_engineer",
+          "ml_engineer",
+          "cloud_devops",
+          "backend",
+          "frontend",
+          "security"
+        ]
+      },
+      "MentionsDateOfBirth": {
+        "type": "boolean",
+        "method": "generate",
+        "description": "True if the resume states the candidate's date of birth or age"
+      },
+      "MentionsMaritalStatus": {
+        "type": "boolean",
+        "method": "generate",
+        "description": "True if the resume states the candidate's marital status"
+      },
+      "MentionsPhoto": {
+        "type": "boolean",
+        "method": "generate",
+        "description": "True if the resume contains a photo of the candidate or a [Photo] placeholder"
+      }
+    }
+  }
+}

@@ -6,3 +6,7 @@ pillow>=10.4
 azure-identity>=1.19
 azure-storage-blob>=12.23
 python-dotenv>=1.0
+
+# Week 2: Content Understanding extraction + evaluation
+requests>=2.32
+pytest>=8.3

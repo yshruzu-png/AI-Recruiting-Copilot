@@ -1,0 +1,59 @@
+{
+  "evaluated": 40,
+  "missing_profiles": [],
+  "accuracy": {
+    "name": 1.0,
+    "email": 1.0,
+    "role_family": 0.975,
+    "job_count": 1.0,
+    "years_exact": 1.0,
+    "years_within_1": 1.0,
+    "years_model_within_1": 0.65,
+    "degree": 1.0
+  },
+  "skills": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  "skills_by_format": {
+    "docx": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "pdf": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "png": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    }
+  },
+  "certifications": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  "protected_flags": {
+    "date_of_birth": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "marital_status": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "photo": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    }
+  },
+  "errors": []
+}

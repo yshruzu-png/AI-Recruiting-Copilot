@@ -19,6 +19,8 @@ infra/tfplan
 
 # Generated data (regenerate with: python scripts/generate_synthetic_data.py)
 data/synthetic/
+data/extracted/
+.pytest_cache/
 
 # OS
 .DS_Store

@@ -30,7 +30,7 @@ flowchart LR
 | Week | Milestone | Status |
 |---|---|---|
 | 1 | Infrastructure (Terraform) + synthetic dataset | ✅ |
-| 2 | Ingestion: Content Understanding → AI Search | ⏳ |
+| 2 | Ingestion: Content Understanding resume extraction + evaluation | ✅ |
 | 3 | Recruiting agent with tools (Agent Framework) | ⏳ |
 | 4 | Screening workflow + vision input | ⏳ |
 | 5 | Guardrails, blind screening, security hardening | ⏳ |
@@ -42,7 +42,9 @@ flowchart LR
 infra/        Terraform: Foundry account + project, models, AI Search, Storage, Key Vault, App Insights, budget, RBAC
 scripts/      Synthetic data generator, upload script, .env writer
 data/         Generated dataset (git-ignored; regenerate any time)
-src/          Application code (from Week 2)
+analyzers/    Content Understanding analyzer definitions (JSON)
+src/copilot/  Application code: Content Understanding client, profile normalization, evaluation
+tests/        Offline unit tests (pytest)
 docs/         Design notes and decisions
 ```
 
@@ -99,6 +101,22 @@ Run `terraform apply` again whenever you need it. Regenerate the dataset with th
 | Model / version not available, or `InsufficientQuota` | Pick a model listed in your region's Foundry catalog and set `chat_model_name` / `chat_model_version`, or lower `chat_capacity` |
 | `AuthorizationFailed` right after apply | RBAC can take a few minutes to take effect. Wait, then try again |
 | Key Vault name already exists | A soft-deleted vault is using the name: `az keyvault purge --name <name>` |
+
+## Week 2: resume extraction with Content Understanding
+
+A custom analyzer ([`analyzers/resume-analyzer.json`](analyzers/resume-analyzer.json)) turns each resume (PDF, Word or scanned image) into a structured profile: name, contact details, skills, certifications, work history, total years of experience, education, a **classified** role family, and flags for protected information (date of birth, marital status, photo) so the screening step can remove them later.
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+pytest -q                                         # offline tests, no Azure calls
+python scripts/setup_content_understanding.py     # one-time: model defaults + create analyzer
+python scripts/extract_resumes.py --limit 3       # quick test
+python scripts/extract_resumes.py                 # all 40 resumes -> data/extracted/
+python scripts/evaluate_extraction.py             # score vs ground truth -> docs/eval/extraction_report.md
+```
+
+Results: see [docs/eval/extraction_report.md](docs/eval/extraction_report.md).
 
 ## The dataset
 
