@@ -56,7 +56,10 @@ def evaluate(profiles: dict[str, dict], truth: list[dict]) -> dict[str, Any]:
         name_ok = norm(prof.get("name")) == norm(gt["name"])
         check("name", name_ok)
         check("email", norm(prof.get("email")) == norm(gt["email"]))
-        check("role_family", prof.get("role_family") == gt["family"])
+        role_ok = prof.get("role_family") == gt["family"]
+        check("role_family", role_ok)
+        if not role_ok:
+            issues.append(f"role_family: got {prof.get('role_family')!r}, expected {gt['family']!r}")
         check("job_count", len(prof.get("work_history") or []) == gt["num_roles"])
 
         yrs = prof.get("years_experience")
@@ -145,4 +148,41 @@ def to_markdown(report: dict[str, Any]) -> str:
     lines += ["", f"## Resumes with at least one mismatch ({len(report['errors'])})", ""]
     for e in report["errors"]:
         lines.append(f"- **{e['id']}** ({e['format']}): " + "; ".join(e["issues"]))
+    return "\n".join(lines) + "\n"
+
+
+def search_metrics(results: dict[str, list[str]], jobs: list[dict], truth: list[dict], k: int = 5) -> dict[str, Any]:
+    """
+    results: job id -> ranked candidate ids returned by search.
+    - family_precision@k: share of the top k whose real career track matches the job (objective)
+    - baseline_overlap@10: share of the transparent skill-overlap baseline's top 10 that search also
+      returned in its top 10 (agreement, not ground truth)
+    """
+    family = {c["id"]: c["family"] for c in truth}
+    per_job, fam_scores, overlaps = [], [], []
+    for job in jobs:
+        ranked = results.get(job["id"], [])
+        top_k = ranked[:k]
+        fam = sum(family.get(c) == job["family"] for c in top_k) / k
+        base = {b["id"] for b in job["baseline_top10"]}
+        overlap = len(base & set(ranked[:10])) / len(base) if base else 0.0
+        fam_scores.append(fam)
+        overlaps.append(overlap)
+        per_job.append({"id": job["id"], "title": job["title"], f"family_precision@{k}": round(fam, 3),
+                        "baseline_overlap@10": round(overlap, 3), "top": top_k})
+    n = len(jobs) or 1
+    return {f"family_precision@{k}": round(sum(fam_scores) / n, 3),
+            "baseline_overlap@10": round(sum(overlaps) / n, 3), "jobs": per_job, "k": k}
+
+
+def search_to_markdown(m: dict[str, Any]) -> str:
+    k = m["k"]
+    lines = ["# Candidate search evaluation", "",
+             "Each job description is used as the search query (hybrid: keyword + vector).", "",
+             f"- **Family precision@{k}:** {m[f'family_precision@{k}']:.0%} of the top {k} candidates are in the job's career track",
+             f"- **Baseline overlap@10:** {m['baseline_overlap@10']:.0%} agreement with a transparent skill-overlap baseline", "",
+             f"| Job | Family precision@{k} | Baseline overlap@10 | Top {k} |", "|---|---|---|---|"]
+    for j in m["jobs"]:
+        lines.append(f"| {j['id']} {j['title']} | {j[f'family_precision@{k}']:.0%} | "
+                     f"{j['baseline_overlap@10']:.0%} | {', '.join(j['top'])} |")
     return "\n".join(lines) + "\n"

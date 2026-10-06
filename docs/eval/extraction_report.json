@@ -55,5 +55,13 @@
       "f1": 1.0
     }
   },
-  "errors": []
+  "errors": [
+    {
+      "id": "CAND-006",
+      "format": "pdf",
+      "issues": [
+        "role_family: got None, expected 'cloud_devops'"
+      ]
+    }
+  ]
 }

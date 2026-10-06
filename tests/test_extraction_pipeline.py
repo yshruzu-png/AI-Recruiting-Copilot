@@ -125,3 +125,42 @@ def test_certification_cleanup():
              "CISSP", "Some Unknown Cert"]
     assert clean_certifications(certs, edu) == [
         "Microsoft Certified: Azure AI Engineer Associate", "CISSP", "Some Unknown Cert"]
+
+
+# ---------------------------------------------------------------------------
+# Search (offline: document building, filters, metrics)
+# ---------------------------------------------------------------------------
+from copilot.evaluation import search_metrics  # noqa: E402
+from copilot.search_index import build_filter, build_index, to_search_document  # noqa: E402
+
+
+def test_search_document_excludes_pii(truth):
+    gt = next(c for c in truth if c["protected_info"])  # a resume with DOB / marital status / photo
+    prof = to_profile(gt["id"], gt["file"], fake_cu_result(gt))
+    doc = to_search_document(prof, vector=[0.0] * 3)
+    text = doc["profile_text"]
+    assert gt["name"] not in text and gt["email"] not in text and gt["phone"] not in text
+    assert "birth" not in text.lower() and "marital" not in text.lower()
+    assert all(s in text for s in gt["skills"])
+    assert doc["years_experience"] == gt["years_experience"]
+
+
+def test_build_filter():
+    assert build_filter() is None
+    assert build_filter(role_family="security", min_years=3) == "role_family eq 'security' and years_experience ge 3"
+    assert build_filter(skill="O'Reilly") == "skills/any(s: s eq 'O''Reilly')"
+
+
+def test_index_schema():
+    idx = build_index()
+    names = {f.name for f in idx.fields}
+    assert {"id", "skills", "profile_vector", "years_experience"} <= names
+    assert next(f for f in idx.fields if f.name == "id").key
+
+
+def test_search_metrics(truth):
+    gt_jobs = json.loads(GT_PATH.read_text())["jobs"]
+    perfect = {j["id"]: [b["id"] for b in j["baseline_top10"]] for j in gt_jobs}
+    m = search_metrics(perfect, gt_jobs, truth)
+    assert m["baseline_overlap@10"] == 1.0
+    assert 0 <= m["family_precision@5"] <= 1

@@ -38,5 +38,6 @@ Resumes evaluated: **40**
 | marital status | 100.0% | 100.0% |
 | photo | 100.0% | 100.0% |
 
-## Resumes with at least one mismatch (0)
+## Resumes with at least one mismatch (1)
 
+- **CAND-006** (pdf): role_family: got None, expected 'cloud_devops'

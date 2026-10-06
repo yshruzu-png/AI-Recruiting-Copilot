@@ -10,3 +10,7 @@ python-dotenv>=1.0
 # Week 2: Content Understanding extraction + evaluation
 requests>=2.32
 pytest>=8.3
+
+# Week 2: Azure AI Search + embeddings
+azure-search-documents>=11.6
+openai>=1.50

@@ -44,3 +44,11 @@ A running log of the main choices and the reasons behind them. Useful for interv
 ## 010: Clean certifications against a reference catalog
 **Decision:** After extraction, fuzzy-match certifications to a known catalog (difflib, 90% similarity) and drop items that duplicate an Education entry.
 **Why:** The first full run scored 87% F1 on certifications. Three errors were the same issue: the PDF text layer read "Azure **AI** Engineer" as "Azure **Al** Engineer" (capital I vs lowercase l). One was a bootcamp certificate counted twice. Deterministic post-processing fixes both without asking the model to guess.
+
+## 011: Hybrid search (keyword + vector) instead of vector-only
+**Decision:** Query AI Search with BM25 keywords and an embedding at the same time; AI Search merges them with Reciprocal Rank Fusion.
+**Why:** Recruiters search for exact terms ("Kafka", "CISSP") and for meaning ("someone who has built data pipelines"). Keywords catch exact skills; vectors catch related ones. Filters (career track, minimum years, required skill) handle hard requirements.
+
+## 012: Never embed names, contact details or protected information
+**Decision:** The embedded/searchable text holds title, career track, years, skills, certifications, job titles and degrees only. Name and email are stored for display but are not searchable.
+**Why:** If a name or date of birth is in the vector, it can quietly influence similarity. Keeping it out is the first layer of bias-aware screening, before the Week 4 workflow.

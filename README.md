@@ -30,7 +30,7 @@ flowchart LR
 | Week | Milestone | Status |
 |---|---|---|
 | 1 | Infrastructure (Terraform) + synthetic dataset | ✅ |
-| 2 | Ingestion: Content Understanding resume extraction + evaluation | ✅ |
+| 2 | Content Understanding extraction + evaluation, AI Search hybrid index | ✅ |
 | 3 | Recruiting agent with tools (Agent Framework) | ⏳ |
 | 4 | Screening workflow + vision input | ⏳ |
 | 5 | Guardrails, blind screening, security hardening | ⏳ |
@@ -116,7 +116,30 @@ python scripts/extract_resumes.py                 # all 40 resumes -> data/extra
 python scripts/evaluate_extraction.py             # score vs ground truth -> docs/eval/extraction_report.md
 ```
 
-Results: see [docs/eval/extraction_report.md](docs/eval/extraction_report.md).
+### Extraction results (40 synthetic resumes)
+
+| Field | Score | Notes |
+|---|---|---|
+| Candidate name, email | 100% | |
+| Skills (F1) | 100% | after telling the analyzer to keep multi-word skills together |
+| Certifications (F1) | 100% | up from 87%: a catalog fix for "Azure AI" being read as "Azure Al" in PDFs |
+| Years of experience (±1 yr) | 100% | calculated in code from job dates; the LLM's own estimate was only 65% |
+| Role family (classify) | 97.5% | |
+| Protected-info detection (DOB, marital status, photo) | 100% precision and recall | feeds the blind-screening step |
+
+Full report: [docs/eval/extraction_report.md](docs/eval/extraction_report.md)
+
+### Candidate search (Azure AI Search, hybrid)
+
+Profiles are indexed with `text-embedding-3-small` vectors. Search combines keyword (BM25) and vector similarity, merged with Reciprocal Rank Fusion, plus filters for career track, minimum years and required skills. **Names, contact details and protected information are never embedded or searched**, so they can't influence ranking.
+
+```bash
+python scripts/build_search_index.py
+python scripts/search_candidates.py "senior data engineer with Spark and Kafka" --min-years 5
+python scripts/evaluate_search.py                 # each JD as a query -> docs/eval/search_report.md
+```
+
+Search report: [docs/eval/search_report.md](docs/eval/search_report.md)
 
 ## The dataset
 
