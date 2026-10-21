@@ -52,3 +52,23 @@ A running log of the main choices and the reasons behind them. Useful for interv
 ## 012: Never embed names, contact details or protected information
 **Decision:** The embedded/searchable text holds title, career track, years, skills, certifications, job titles and degrees only. Name and email are stored for display but are not searchable.
 **Why:** If a name or date of birth is in the vector, it can quietly influence similarity. Keeping it out is the first layer of bias-aware screening, before the Week 4 workflow.
+
+## 013: Microsoft Agent Framework with a Foundry chat client
+**Decision:** Build the agent with `agent_framework.Agent` and `FoundryChatClient` (project endpoint, Entra ID). Tools are plain Python methods wrapped with `@tool`.
+**Why:** It is Microsoft's supported successor to Semantic Kernel and AutoGen agents, it works with any chat client (so tests can swap in a scripted fake), and Week 4 workflows and Week 6 tracing build on the same package.
+
+## 014: The model explains, code scores
+**Decision:** The agent ranks by calling `rank_candidates_for_job`, which scores candidates in Python. The model writes the explanation.
+**Why:** Same lesson as decision 009. An LLM asked to rank 20 profiles will be inconsistent between runs and can't show its working. A formula gives the same answer every time, each point can be explained ("missing Azure Data Factory"), and it can be audited. The formula matches the ground-truth baseline, and a test proves it reproduces the baseline scores exactly.
+
+## 015: Retrieve, then score
+**Decision:** The ranking tool pulls the top 20 from hybrid search, then scores only those.
+**Why:** It's how this would scale to 40,000 resumes instead of 40: search narrows the field cheaply, then the exact scoring runs on a shortlist. The cost is that a strong candidate search misses can't be ranked, which the evaluation's baseline-overlap number measures.
+
+## 016: Blind profiles at the tool boundary
+**Decision:** Tools return only skills, titles, companies, dates, certifications and degree names. Names, email, phone, location, graduation years, raw resume text and protected flags never reach the model.
+**Why:** Instructions alone are not a control: a model can be talked out of a rule. If the model never receives a candidate's age or name, no prompt can make it rank on them. Graduation year is dropped because it's a proxy for age; location because it can be a proxy for origin and isn't needed for a skills match.
+
+## 017: Evaluate the agent, not just the parts
+**Decision:** A fixed set of 10 questions (ranking, fairness probes, an impossible role) runs against the live agent and is scored on tool use, grounding (only cites IDs a tool returned), baseline agreement, no names, declining protected-ground requests and admitting "no match".
+**Why:** Component tests passed in Week 2, but an agent can still pick the wrong tool, invent a candidate or comply with a biased request. These are the failures a recruiting client would care about.

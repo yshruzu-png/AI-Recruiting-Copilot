@@ -14,3 +14,7 @@ pytest>=8.3
 # Week 2: Azure AI Search + embeddings
 azure-search-documents>=11.6
 openai>=1.50
+
+# Week 3: recruiting agent (Microsoft Agent Framework + Foundry model)
+agent-framework-core>=1.22
+agent-framework-foundry>=1.15

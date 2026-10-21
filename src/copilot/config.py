@@ -13,6 +13,7 @@ load_dotenv(ROOT / ".env")
 class Settings:
     storage_account: str = os.getenv("AZURE_STORAGE_ACCOUNT", "")
     ai_endpoint: str = os.getenv("AZURE_AI_ENDPOINT", "").rstrip("/")
+    project_endpoint: str = os.getenv("AZURE_AI_PROJECT_ENDPOINT", "").rstrip("/")
     search_endpoint: str = os.getenv("AZURE_SEARCH_ENDPOINT", "")
     chat_deployment: str = os.getenv("AZURE_CHAT_DEPLOYMENT", "gpt-4.1-mini")
     embedding_deployment: str = os.getenv("AZURE_EMBEDDING_DEPLOYMENT", "text-embedding-3-small")

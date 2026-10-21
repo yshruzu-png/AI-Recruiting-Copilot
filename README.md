@@ -31,7 +31,7 @@ flowchart LR
 |---|---|---|
 | 1 | Infrastructure (Terraform) + synthetic dataset | ✅ |
 | 2 | Content Understanding extraction + evaluation, AI Search hybrid index | ✅ |
-| 3 | Recruiting agent with tools (Agent Framework) | ⏳ |
+| 3 | Recruiting agent with tools (Agent Framework) | ✅ |
 | 4 | Screening workflow + vision input | ⏳ |
 | 5 | Guardrails, blind screening, security hardening | ⏳ |
 | 6 | Monitoring, evaluations in CI, deployment, demo | ⏳ |
@@ -43,7 +43,7 @@ infra/        Terraform: Foundry account + project, models, AI Search, Storage, 
 scripts/      Synthetic data generator, upload script, .env writer
 data/         Generated dataset (git-ignored; regenerate any time)
 analyzers/    Content Understanding analyzer definitions (JSON)
-src/copilot/  Application code: Content Understanding client, profile normalization, evaluation
+src/copilot/  Application code: Content Understanding, profiles, search, scoring, agent tools, agent, evaluation
 tests/        Offline unit tests (pytest)
 docs/         Design notes and decisions
 ```
@@ -140,6 +140,42 @@ python scripts/evaluate_search.py                 # each JD as a query -> docs/e
 ```
 
 Search report: [docs/eval/search_report.md](docs/eval/search_report.md)
+
+## Week 3: the recruiting agent
+
+A **Microsoft Agent Framework** agent on the Foundry chat model, with six tools over the Week 2 data:
+
+| Tool | What it does |
+|---|---|
+| `list_jobs`, `get_job` | Open requisitions and their required / nice-to-have skills |
+| `search_candidates` | Week 2 hybrid search, with career-track, min-years and must-have-skill filters |
+| `get_candidate` | One candidate's **blind** profile |
+| `compare_candidate_to_job` | Required skills matched and missing, nice-to-haves, years vs minimum |
+| `rank_candidates_for_job` | Retrieve the 20 likeliest candidates with search, then score each with a transparent formula |
+
+**The model explains; code decides.** Scores come from [`matching.py`](src/copilot/matching.py) (60% required skills, 20% nice-to-have, 20% experience), so every ranking can be traced line by line. The model only ever sees blind profiles: no names, contact details, location, graduation years or protected-info flags. Its instructions tell it to decline screening on age, marital status or other protected grounds and to say so when nobody fits.
+
+```bash
+pip install -r requirements.txt
+pytest -q                                          # 23 offline tests, incl. a full tool-calling loop with a scripted model
+python scripts/chat.py --show-tools                # interactive; follow-up questions keep context
+python scripts/chat.py "Who are the top 5 candidates for the Senior Data Engineer role, and why?"
+python scripts/evaluate_agent.py                   # 10 questions -> docs/eval/agent_report.md
+```
+
+### Agent results (gpt-4.1-mini, 10 questions)
+
+| Check | Result |
+|---|---|
+| Ranking questions passed (right tool, 5 real IDs, no names) | 100% (6/6) |
+| Agreement with the baseline top 5 | 100% |
+| Fairness probes declined ("under 30", "leave married people off", "youngest") | 100% (3/3) |
+| Honest "no match" for an impossible role | 100% (1/1) |
+| Answers citing only IDs that a tool returned | 100% |
+
+The first run scored the honesty question as a fail. Reading the answer showed the agent was right ("There are no senior embedded firmware engineer candidates found..."); the keyword check was too narrow. The check was fixed and that answer added as a test, which is exactly why every answer is saved in the report. Full report: [docs/eval/agent_report.md](docs/eval/agent_report.md)
+
+The agent evaluation asks ranking questions (did it use the ranking tool, cite only IDs that tools returned, agree with the baseline?), fairness probes ("only people under 30", "leave married people off") and an impossible role (does it admit there's no match?). Every answer is saved in the report for a human to read, because the fairness checks are keyword-based until Foundry evaluators arrive in Week 6.
 
 ## The dataset
 

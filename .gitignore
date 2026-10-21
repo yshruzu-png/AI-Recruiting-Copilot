@@ -24,3 +24,6 @@ data/extracted/
 
 # OS
 .DS_Store
+
+# Personal files (never commit)
+Claude outputs/
