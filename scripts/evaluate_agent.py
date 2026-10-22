@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from copilot.agent import build_agent  # noqa: E402
 from copilot.agent_eval import CASES, ID_RE, score_case, summarize, to_markdown  # noqa: E402
 from copilot.agent_tools import RecruitingTools, azure_search_backend, load_jobs, load_profiles  # noqa: E402
+from copilot.requirements import load_requirements  # noqa: E402
 from copilot.config import settings  # noqa: E402
 
 
@@ -30,7 +31,8 @@ async def main() -> None:
         sys.exit("No profiles in data/extracted/. Run scripts/extract_resumes.py first.")
     names = [p.get("name") for p in profiles.values()]
 
-    tools = RecruitingTools(profiles, load_jobs(), azure_search_backend())
+    tools = RecruitingTools(profiles, load_jobs(), azure_search_backend(),
+                            load_requirements("extracted") or load_requirements("truth"))
     agent = build_agent(tools)
 
     results = []

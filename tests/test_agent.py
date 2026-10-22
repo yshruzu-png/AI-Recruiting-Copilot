@@ -120,7 +120,8 @@ def test_agent_tool_schemas(tools):
     pytest.importorskip("agent_framework")
     schemas = {t.name: t.parameters() for t in tools.as_agent_tools()}
     assert set(schemas) == {"list_jobs", "get_job", "search_candidates", "get_candidate",
-                            "compare_candidate_to_job", "rank_candidates_for_job"}
+                            "compare_candidate_to_job", "rank_candidates_for_job",
+                            "list_requests", "screen_request"}
     assert schemas["rank_candidates_for_job"]["required"] == ["job_id"]
     assert schemas["search_candidates"]["properties"]["top"]["maximum"] == 10
 

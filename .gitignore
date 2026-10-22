@@ -27,3 +27,6 @@ data/extracted/
 
 # Personal files (never commit)
 Claude outputs/
+
+# Submission drafts and exports contain candidate names
+data/submissions/

@@ -72,3 +72,31 @@ A running log of the main choices and the reasons behind them. Useful for interv
 ## 017: Evaluate the agent, not just the parts
 **Decision:** A fixed set of 10 questions (ranking, fairness probes, an impossible role) runs against the live agent and is scored on tool use, grounding (only cites IDs a tool returned), baseline agreement, no names, declining protected-ground requests and admitting "no match".
 **Why:** Component tests passed in Week 2, but an agent can still pick the wrong tool, invent a candidate or comply with a biased request. These are the failures a recruiting client would care about.
+
+## 018: Build the product wedge into the portfolio project
+**Decision:** Week 4's screening workflow became a public-sector submission workflow (Requests for Resumes with mandatory and rated criteria).
+**Why:** General "AI resume screening" is crowded and being built into every ATS. Answering government RFRs is a specific, repetitive and expensive task that I know from doing 50–60 submissions a week, and generic tools don't handle the rules (pass/fail mandatories, points for demonstrated years).
+
+## 019: Demonstrated experience comes from job highlights, not the skills list
+**Decision:** Added a `Highlights` field to each job in the resume analyzer. A criterion is met only where a dated role mentions it. A skill that is only listed is marked "verify".
+**Why:** That's how public-sector evaluators score. A listed skill with no project behind it gets zero points, and submitting it as if it were demonstrated wastes a submission. Flagging it lets the recruiter fix the resume or ask the candidate before submitting.
+
+## 020: Ground truth from the same rules applied to the true content
+**Decision:** The generator applies `copilot.screening` to the real job histories to produce the expected result for every candidate on every request.
+**Why:** It isolates the question that matters: does extraction keep what screening needs? The rules themselves are covered by separate unit tests with hand-calculated answers. The evaluation also runs with the true criteria and with the extracted criteria, so an error can be traced to resume extraction or requirement extraction.
+
+## 021: Model writes prose, code checks it
+**Decision:** The model writes only the summary paragraph. A grounding check rejects it if it contains any number or known skill that isn't in the evidence, or mentions a protected attribute; the template summary is used instead and the rejected text is kept for review.
+**Why:** A submission goes to a client under the agency's name. One invented "8 years of Databricks" damages trust more than plain wording does. A cheap deterministic check catches the most damaging hallucinations without a second model call.
+
+## 022: Blind until approved
+**Decision:** Drafts carry the candidate ID only. The Word export refuses to run unless a named recruiter approved the draft, and it's the only step that adds the candidate's name.
+**Why:** Screening can't be influenced by a name it never sees, and nothing reaches a client without a person accountable for it. Approval records who approved and when.
+
+## 023: Read RFR PDFs from local disk
+**Decision:** `extract_requirements.py` sends local RFR PDFs to Content Understanding as base64 instead of uploading them to Blob Storage first.
+**Why:** No Terraform change is needed for a new container, and the files are tiny. In production, RFRs would arrive by email or a client portal and go through the same Blob + Function path as resumes.
+
+## 024: Fixes from the first live run
+**Decision:** (a) Clean "Azure Al" / "OpenAl" back to "AI" in job highlights. (b) Map an extracted term onto the longest pool skill it contains ("Zero Trust policies" → "Zero Trust"). (c) Tell the requirement analyzer to keep named practices such as CI/CD and MLOps, and that a title can wrap onto two lines. (d) Let the grounding check accept floors and roundings ("more than 5 years" for 5.2). (e) Warn about profiles extracted before highlights existed.
+**Why:** The live run found each of these. (a) is the same capital-I/lowercase-l PDF problem as decision 010, now in highlights: CAND-010 and CAND-028 looked like they had no Azure AI Search or Azure OpenAI experience. (c) was my own instruction ("no generic phrases") making the model drop CI/CD. (d) rejected a true sentence. (e) CAND-019 failed to re-extract and silently kept a profile with no highlights. Re-scoring the saved Azure results with (a), (b) and (e) moved resume-side screening agreement from 98% to 99% with no Azure calls, and every fix has a test built from the real output.

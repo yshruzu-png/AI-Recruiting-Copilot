@@ -1,0 +1,121 @@
+{
+  "description": "Extracts mandatory and rated evaluation criteria from a public-sector Request for Resumes (RFR)",
+  "baseAnalyzerId": "prebuilt-document",
+  "models": {
+    "completion": "gpt-4.1-mini",
+    "embedding": "text-embedding-3-small"
+  },
+  "config": {
+    "returnDetails": true,
+    "estimateFieldSourceAndConfidence": true
+  },
+  "fieldSchema": {
+    "name": "RequestForResumes",
+    "description": "Evaluation criteria for a staffing request",
+    "fields": {
+      "RequestId": {
+        "type": "string",
+        "method": "extract",
+        "description": "The request identifier, e.g. RFR-001"
+      },
+      "Title": {
+        "type": "string",
+        "method": "extract",
+        "description": "The full role title after the request ID, e.g. 'Generative AI Developer'. It may wrap onto a second line; include every word"
+      },
+      "Client": {
+        "type": "string",
+        "method": "extract",
+        "description": "Client organization"
+      },
+      "Term": {
+        "type": "string",
+        "method": "extract",
+        "description": "Contract term as written"
+      },
+      "Location": {
+        "type": "string",
+        "method": "extract",
+        "description": "Work location as written"
+      },
+      "Positions": {
+        "type": "integer",
+        "method": "extract",
+        "description": "Number of resources requested"
+      },
+      "MandatoryCriteria": {
+        "type": "array",
+        "method": "extract",
+        "description": "Each pass/fail mandatory requirement, in order",
+        "items": {
+          "type": "object",
+          "properties": {
+            "CriterionId": {
+              "type": "string",
+              "method": "extract",
+              "description": "Label such as M1"
+            },
+            "Text": {
+              "type": "string",
+              "method": "extract",
+              "description": "Full requirement text exactly as written"
+            },
+            "Skills": {
+              "type": "array",
+              "method": "extract",
+              "description": "Each named technology, product, tool or practice in this requirement, one per item, exactly as written. Include acronyms and practice names such as CI/CD, MLOps or SIEM when the text names them. Do not include generic phrases such as 'data pipelines' or 'detection rules'",
+              "items": {
+                "type": "string",
+                "method": "extract"
+              }
+            },
+            "MinimumYears": {
+              "type": "number",
+              "method": "extract",
+              "description": "Minimum years of experience stated in this requirement (e.g. 'Minimum 3 years' -> 3). Leave empty if no number of years is stated"
+            }
+          }
+        }
+      },
+      "RatedCriteria": {
+        "type": "array",
+        "method": "extract",
+        "description": "Each rated (points) requirement, in order",
+        "items": {
+          "type": "object",
+          "properties": {
+            "CriterionId": {
+              "type": "string",
+              "method": "extract",
+              "description": "Label such as R1"
+            },
+            "Text": {
+              "type": "string",
+              "method": "extract",
+              "description": "Requirement text exactly as written, without the points"
+            },
+            "Skills": {
+              "type": "array",
+              "method": "extract",
+              "description": "Each named technology, product, tool or practice in this requirement, one per item, exactly as written. Include acronyms and practice names such as CI/CD, MLOps or SIEM when the text names them. Do not include generic phrases such as 'data pipelines' or 'detection rules'",
+              "items": {
+                "type": "string",
+                "method": "extract"
+              }
+            },
+            "TargetYears": {
+              "type": "number",
+              "method": "extract",
+              "description": "Years of experience stated for full points (e.g. '3 years for full points' -> 3). Leave empty if not stated"
+            },
+            "Points": {
+              "type": "number",
+              "method": "extract",
+              "description": "Maximum points for this requirement"
+            }
+          }
+        }
+      }
+    }
+  }
+}

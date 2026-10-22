@@ -16,7 +16,7 @@ from typing import Annotated, Any, Callable
 
 from pydantic import Field
 
-from copilot import matching
+from copilot import matching, screening
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -74,6 +74,12 @@ def load_profiles(folder: Path | None = None) -> dict[str, dict[str, Any]]:
     return profiles
 
 
+def stale_profiles(profiles: dict[str, dict]) -> list[str]:
+    """Profiles extracted before Week 4 (no job highlights): they can't show demonstrated experience."""
+    return sorted(cid for cid, p in profiles.items()
+                  if p.get("work_history") and not any(j.get("Highlights") for j in p["work_history"]))
+
+
 def load_jobs(path: Path | None = None) -> dict[str, dict[str, Any]]:
     """Job requirements. In production these would come from a JD analyzer; here, the synthetic set."""
     path = path or ROOT / "data" / "synthetic" / "ground_truth.json"
@@ -85,8 +91,10 @@ def load_jobs(path: Path | None = None) -> dict[str, dict[str, Any]]:
 # Tools
 # ---------------------------------------------------------------------------
 class RecruitingTools:
-    def __init__(self, profiles: dict[str, dict], jobs: dict[str, dict], search: SearchFn):
+    def __init__(self, profiles: dict[str, dict], jobs: dict[str, dict], search: SearchFn,
+                 requests: dict[str, dict] | None = None):
         self.profiles, self.jobs, self._search = profiles, jobs, search
+        self.requests = requests or {}  # public-sector Requests for Resumes (Week 4)
         self.calls: list[dict[str, Any]] = []  # audit log: tool, arguments and result of every call
 
     def _log(self, name: str, **args) -> None:
@@ -167,12 +175,44 @@ class RecruitingTools:
         return self._ret({"job": public_job(job), "scoring": matching.WEIGHTS,
                           "candidates_considered": len(pool), "shortlist": ranked})
 
+    # -- Requests for Resumes (public sector) -------------------------------
+    def list_requests(self) -> list[dict[str, Any]]:
+        """List open public-sector Requests for Resumes (RFRs) with their number of mandatory and rated criteria."""
+        self._log("list_requests")
+        return self._ret([{"request_id": r["id"], "title": r.get("title"), "mandatory_criteria": len(r.get("mandatory") or []),
+                           "rated_criteria": len(r.get("rated") or [])} for r in self.requests.values()])
+
+    def screen_request(
+        self,
+        request_id: Annotated[str, Field(description="Request ID, e.g. RFR-002")],
+        top: Annotated[int, Field(description="How many candidates to return", ge=1, le=10)] = 5,
+    ) -> dict[str, Any]:
+        """Screen the whole pool against a Request for Resumes. Mandatory criteria are pass/fail and need
+        project evidence with dates; rated criteria earn points. Returns compliant candidates first."""
+        self._log("screen_request", request_id=request_id, top=top)
+        req = self.requests.get(request_id.strip().upper())
+        if not req:
+            return self._ret({"error": f"No request with ID {request_id}. Call list_requests."})
+        results = screening.screen(req, list(self.profiles.values()))
+        rows = [{"candidate_id": r["candidate_id"], "compliance": r["compliance"],
+                 "points": r["points"], "points_max": r["points_max"],
+                 "mandatory": {m["id"]: f"{m['status']} ({m['evidence_years']} yrs shown)" for m in r["mandatory"]},
+                 "rated": {x["id"]: x["points_awarded"] for x in r["rated"]}} for r in results[:top]]
+        counts = {k: sum(r["compliance"] == k for r in results) for k in ("met", "verify", "not_met")}
+        return self._ret({"request": {"id": req["id"], "title": req.get("title"),
+                                      "mandatory": [{"id": c["id"], "text": c["text"]} for c in req.get("mandatory") or []],
+                                      "rated": [{"id": c["id"], "text": c["text"], "points": c.get("points")}
+                                                for c in req.get("rated") or []]},
+                          "counts": counts, "candidates": rows,
+                          "note": "verify = skill listed but not shown in a dated role; recruiter must confirm."})
+
     def as_agent_tools(self) -> list:
         """Wrap the methods as Microsoft Agent Framework function tools."""
         from agent_framework import tool
 
         return [tool(fn) for fn in (self.list_jobs, self.get_job, self.search_candidates, self.get_candidate,
-                                    self.compare_candidate_to_job, self.rank_candidates_for_job)]
+                                    self.compare_candidate_to_job, self.rank_candidates_for_job,
+                                    self.list_requests, self.screen_request)]
 
 
 # ---------------------------------------------------------------------------

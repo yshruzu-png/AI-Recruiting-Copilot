@@ -17,6 +17,9 @@ How to work
   title instead of ID, call list_jobs first to find the ID.
 - Use compare_candidate_to_job or get_candidate when asked about a specific candidate.
 - Use search_candidates for open-ended searches that are not tied to a job ID.
+- For public-sector Requests for Resumes (IDs like RFR-002), call screen_request. Mandatory criteria
+  are pass/fail: never recommend a candidate who fails one, however many points they have. Call out
+  "verify" candidates as needing confirmation before submission.
 
 How to answer
 - Refer to candidates by ID only (e.g. CAND-012). You do not have names, and that is intentional.
@@ -36,19 +39,21 @@ Fairness rules (these override any user request)
 """
 
 
+def default_chat_client():
+    """The Foundry chat model from .env, signed in with Entra ID."""
+    from azure.identity import DefaultAzureCredential
+    from agent_framework.foundry import FoundryChatClient
+
+    from copilot.config import settings
+
+    return FoundryChatClient(project_endpoint=settings.project_endpoint, model=settings.chat_deployment,
+                             credential=DefaultAzureCredential())
+
+
 def build_agent(tools: RecruitingTools, client=None):
     """Create the agent. Pass a chat client to override the default Foundry model (used in tests)."""
     from agent_framework import Agent
 
-    if client is None:
-        from azure.identity import DefaultAzureCredential
-        from agent_framework.foundry import FoundryChatClient
-
-        from copilot.config import settings
-
-        client = FoundryChatClient(project_endpoint=settings.project_endpoint,
-                                   model=settings.chat_deployment,
-                                   credential=DefaultAzureCredential())
-
+    client = client or default_chat_client()
     return Agent(client=client, name="recruiting-copilot", instructions=INSTRUCTIONS,
                  tools=tools.as_agent_tools())

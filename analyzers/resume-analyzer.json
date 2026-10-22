@@ -82,6 +82,15 @@
               "type": "string",
               "method": "extract",
               "description": "End month and year as written, or Present"
+            },
+            "Highlights": {
+              "type": "array",
+              "method": "extract",
+              "description": "Each bullet point or achievement listed under this job, one per item, exactly as written",
+              "items": {
+                "type": "string",
+                "method": "extract"
+              }
             }
           }
         }

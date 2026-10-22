@@ -1,7 +1,9 @@
 """
 One-time setup for Content Understanding:
   1. Tell Content Understanding which of your model deployments to use (resource "defaults")
-  2. Create (or replace) the custom resume analyzer from analyzers/resume-analyzer.json
+  2. Create (or replace) the custom analyzers:
+     resumeAnalyzer      <- analyzers/resume-analyzer.json
+     requirementAnalyzer <- analyzers/requirement-analyzer.json (Week 4: Requests for Resumes)
 
 Usage: python scripts/setup_content_understanding.py
 """
@@ -15,7 +17,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from copilot.config import settings  # noqa: E402
 from copilot.content_understanding import ContentUnderstandingClient  # noqa: E402
 
-ANALYZER_ID = "resumeAnalyzer"
+ANALYZERS = {"resumeAnalyzer": "resume-analyzer.json", "requirementAnalyzer": "requirement-analyzer.json"}
 
 
 def main() -> None:
@@ -28,13 +30,13 @@ def main() -> None:
     })
     print("    ", json.dumps(defaults.get("modelDeployments", defaults)))
 
-    print(f"2/2 Creating analyzer '{ANALYZER_ID}' (takes up to a minute)...")
-    definition = json.loads((ROOT / "analyzers" / "resume-analyzer.json").read_text())
-    cu.create_analyzer(ANALYZER_ID, definition)
-    analyzer = cu.get_analyzer(ANALYZER_ID)
-    fields = list(analyzer.get("fieldSchema", {}).get("fields", {}))
-    print(f"    Ready: {analyzer.get('analyzerId', ANALYZER_ID)} with {len(fields)} fields: {', '.join(fields)}")
-
+    for analyzer_id, file in ANALYZERS.items():
+        print(f"2/2 Creating analyzer '{analyzer_id}' (takes up to a minute)...")
+        definition = json.loads((ROOT / "analyzers" / file).read_text())
+        cu.create_analyzer(analyzer_id, definition)
+        analyzer = cu.get_analyzer(analyzer_id)
+        fields = list(analyzer.get("fieldSchema", {}).get("fields", {}))
+        print(f"    Ready: {analyzer.get('analyzerId', analyzer_id)} with {len(fields)} fields: {', '.join(fields)}")
 
 if __name__ == "__main__":
     main()

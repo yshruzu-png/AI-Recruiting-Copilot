@@ -1,6 +1,6 @@
 """
 Generate a synthetic recruiting dataset: resumes (PDF / DOCX / scanned-style PNG),
-job descriptions, and ground-truth labels for evaluation.
+job descriptions, public-sector style Requests for Resumes, and ground-truth labels for evaluation.
 
 All people and companies are fake (Faker). Never put real candidate data in this repo.
 
@@ -165,6 +165,14 @@ JOBS = [
      "nice": ["Defender for Cloud", "Entra ID", "KQL", "Zero Trust"]},
 ]
 
+# Public-sector style Requests for Resumes (RFR): mandatory criteria are pass/fail, rated criteria
+# earn points. The client is fictional. Used by the Week 4 submission workflow.
+REQUESTS = [
+    {"id": "RFR-001", "title": "Senior Data Engineer", "family": "data_engineer", "client": "Fictional Provincial Ministry (synthetic)", "term": "6 months, with option to extend 6 months", "location": "Toronto, ON (hybrid, 3 days on site)", "positions": 1, "mandatory": [{"id": "M1", "text": "Minimum 3 years of demonstrated experience building data pipelines with Apache Spark, Databricks or Azure Data Factory", "skills": ["Apache Spark", "Databricks", "Azure Data Factory"], "min_years": 3}, {"id": "M2", "text": "Demonstrated experience writing SQL or Python for data transformation", "skills": ["SQL", "Python"], "min_years": 0}], "rated": [{"id": "R1", "text": "Experience designing lakehouse solutions on Databricks, Delta Lake or Microsoft Fabric (4 years for full points)", "skills": ["Databricks", "Delta Lake", "Microsoft Fabric"], "target_years": 4, "points": 40}, {"id": "R2", "text": "Experience orchestrating pipelines with Azure Data Factory, Airflow or Microsoft Fabric (3 years for full points)", "skills": ["Azure Data Factory", "Airflow", "Microsoft Fabric"], "target_years": 3, "points": 35}, {"id": "R3", "text": "Experience with streaming data using Kafka (2 years for full points)", "skills": ["Kafka"], "target_years": 2, "points": 25}]},
+    {"id": "RFR-002", "title": "Generative AI Developer", "family": "ml_engineer", "client": "Fictional Provincial Ministry (synthetic)", "term": "12 months", "location": "Toronto, ON (hybrid, 2 days on site)", "positions": 1, "mandatory": [{"id": "M1", "text": "Minimum 2 years of demonstrated experience building generative AI or retrieval solutions with Azure OpenAI, Microsoft Foundry, Azure AI Search or LangChain", "skills": ["Azure OpenAI", "Microsoft Foundry", "Azure AI Search", "LangChain"], "min_years": 2}, {"id": "M2", "text": "Demonstrated experience deploying models or APIs in containers (Docker or Kubernetes)", "skills": ["Docker", "Kubernetes"], "min_years": 0}], "rated": [{"id": "R1", "text": "Experience building retrieval-augmented generation (RAG) solutions with Azure AI Search (3 years for full points)", "skills": ["Azure AI Search"], "target_years": 3, "points": 40}, {"id": "R2", "text": "Experience with MLOps pipelines using Azure Machine Learning or MLflow (3 years for full points)", "skills": ["Azure Machine Learning", "MLflow", "MLOps"], "target_years": 3, "points": 35}, {"id": "R3", "text": "Experience serving models with FastAPI (2 years for full points)", "skills": ["FastAPI"], "target_years": 2, "points": 25}]},
+    {"id": "RFR-003", "title": "Cloud Infrastructure Specialist", "family": "cloud_devops", "client": "Fictional Provincial Ministry (synthetic)", "term": "9 months, with option to extend 3 months", "location": "Toronto, ON (hybrid, 3 days on site)", "positions": 2, "mandatory": [{"id": "M1", "text": "Minimum 3 years of demonstrated experience with infrastructure as code using Terraform, Bicep or Ansible", "skills": ["Terraform", "Bicep", "Ansible"], "min_years": 3}, {"id": "M2", "text": "Demonstrated experience building CI/CD pipelines (GitHub Actions or Azure DevOps)", "skills": ["GitHub Actions", "Azure DevOps", "CI/CD"], "min_years": 0}], "rated": [{"id": "R1", "text": "Experience operating Kubernetes or AKS clusters in production (4 years for full points)", "skills": ["Kubernetes", "AKS"], "target_years": 4, "points": 50}, {"id": "R2", "text": "Experience implementing monitoring with Prometheus or Grafana (2 years for full points)", "skills": ["Prometheus", "Grafana"], "target_years": 2, "points": 50}]},
+    {"id": "RFR-004", "title": "Security Operations Analyst", "family": "security", "client": "Fictional Provincial Ministry (synthetic)", "term": "6 months", "location": "Remote within Ontario", "positions": 1, "mandatory": [{"id": "M1", "text": "Minimum 2 years of demonstrated experience triaging alerts in Microsoft Sentinel, Splunk or another SIEM", "skills": ["Microsoft Sentinel", "Splunk", "SIEM"], "min_years": 2}], "rated": [{"id": "R1", "text": "Experience writing detection rules in KQL (3 years for full points)", "skills": ["KQL"], "target_years": 3, "points": 40}, {"id": "R2", "text": "Experience deploying Defender for Cloud, Entra ID or Zero Trust policies (3 years for full points)", "skills": ["Defender for Cloud", "Entra ID", "Zero Trust"], "target_years": 3, "points": 35}, {"id": "R3", "text": "Experience leading ISO 27001 or NIST CSF audit readiness (2 years for full points)", "skills": ["ISO 27001", "NIST CSF"], "target_years": 2, "points": 25}]},
+]
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -425,6 +433,55 @@ We evaluate candidates on skills and experience only. We welcome applicants of a
     path.write_text(text, encoding="utf-8")
 
 
+def render_request(r: dict, path: Path) -> None:
+    """A Request for Resumes as a PDF, laid out the way public-sector RFRs usually are."""
+    ss = getSampleStyleSheet()
+    p = ParagraphStyle("p", parent=ss["Normal"], fontSize=10, leading=13)
+    story = [
+        Paragraph(f"Request for Resumes {r['id']}: {r['title']}", ss["Title"]),
+        Paragraph(f"<b>Client:</b> {r['client']}", p),
+        Paragraph(f"<b>Number of resources:</b> {r['positions']}", p),
+        Paragraph(f"<b>Term:</b> {r['term']}", p),
+        Paragraph(f"<b>Work location:</b> {r['location']}", p),
+        Spacer(1, 8),
+        Paragraph("1. Mandatory requirements (pass/fail)", ss["Heading3"]),
+        Paragraph("Resumes that do not demonstrate every mandatory requirement will not be evaluated further. "
+                  "Experience must be shown in the resume with project or employer dates.", p),
+    ]
+    for c in r["mandatory"]:
+        story.append(Paragraph(f"<b>{c['id']}.</b> {c['text']}", p))
+    story += [Spacer(1, 8), Paragraph("2. Rated requirements", ss["Heading3"]),
+              Paragraph("Points are awarded in proportion to demonstrated years of experience, "
+                        "up to the stated number of years.", p)]
+    for c in r["rated"]:
+        story.append(Paragraph(f"<b>{c['id']}.</b> {c['text']} <b>({c['points']} points)</b>", p))
+    total = sum(c["points"] for c in r["rated"])
+    story += [Spacer(1, 6), Paragraph(f"<b>Total available points: {total}</b>", p), Spacer(1, 8),
+              Paragraph("3. Submission instructions", ss["Heading3"]),
+              Paragraph("For each requirement, state where in the resume the experience is demonstrated "
+                        "(role, employer and dates). Evaluation is based on skills and experience only.", p)]
+    SimpleDocTemplate(str(path), pagesize=LETTER, topMargin=40, bottomMargin=40,
+                      title=f"{r['id']} {r['title']}").build(story)
+
+
+def work_history(c: Candidate) -> list[dict]:
+    """Jobs in the same shape the resume analyzer returns (JobTitle, Company, dates, Highlights)."""
+    return [{"JobTitle": j.title, "Company": j.company, "StartDate": j.start, "EndDate": j.end,
+             "Highlights": j.bullets} for j in c.experience]
+
+
+def expected_screening(r: dict, candidates: list[Candidate]) -> list[dict]:
+    """Ground truth for the submission workflow: apply the screening rules to the TRUE resume content.
+    Evaluating the pipeline against this measures whether extraction kept what screening needs."""
+    import sys
+    sys.path.insert(0, str(ROOT / "src"))
+    from copilot.screening import screen
+
+    profiles = [{"id": c.id, "skills": c.skills, "work_history": work_history(c)} for c in candidates]
+    return [{"id": x["candidate_id"], "compliance": x["compliance"], "points": x["points"]}
+            for x in screen(r, profiles, today=TODAY)]
+
+
 # ---------------------------------------------------------------------------
 # Reference ranking (a simple, transparent baseline the agent can be evaluated against)
 # ---------------------------------------------------------------------------
@@ -463,12 +520,15 @@ def main() -> None:
 
     for j in JOBS:
         render_job(j, OUT / "job-descriptions" / f"{j['id']}.md")
+    (OUT / "requests").mkdir()
+    for r in REQUESTS:
+        render_request(r, OUT / "requests" / f"{r['id']}.pdf")
 
     ground_truth = {
         "generated_with": {"seed": args.seed, "count": args.count},
         "candidates": [
             {k: v for k, v in asdict(c).items() if k not in ("summary", "experience")}
-            | {"num_roles": len(c.experience)}
+            | {"num_roles": len(c.experience), "experience": work_history(c)}
             for c in candidates
         ],
         "jobs": [
@@ -478,12 +538,15 @@ def main() -> None:
             ]}
             for j in JOBS
         ],
+        # expected screening outcome per request, from the true resume content (see copilot.screening)
+        "requests": [r | {"expected": expected_screening(r, candidates)} for r in REQUESTS],
     }
     (OUT / "ground_truth.json").write_text(json.dumps(ground_truth, indent=2), encoding="utf-8")
 
     fmts = {f: sum(c.format == f for c in candidates) for f in ("pdf", "docx", "png")}
     prot = sum(bool(c.protected_info) for c in candidates)
-    print(f"Generated {len(candidates)} resumes {fmts}, {len(JOBS)} job descriptions -> {OUT}")
+    print(f"Generated {len(candidates)} resumes {fmts}, {len(JOBS)} job descriptions, "
+          f"{len(REQUESTS)} requests for resumes -> {OUT}")
     print(f"{prot} resumes include protected info (DOB / marital status / photo) for blind-screening tests")
 
 

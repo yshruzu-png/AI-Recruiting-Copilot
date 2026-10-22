@@ -37,13 +37,29 @@ def years_from_history(work_history: list[dict], today: date | None = None) -> i
     today = today or date.today()
     spans = []
     for job in work_history or []:
-        start, end = _parse_month(job.get("StartDate"), today), _parse_month(job.get("EndDate"), today)
-        if start is None or end is None or end < start:
+        span = job_span(job, today)
+        if span is None:
             return None
-        spans.append((start, end))
+        spans.append(span)
     if not spans:
         return None
-    spans.sort()
+    return round(months_covered(spans) / 12)
+
+
+def job_span(job: dict, today: date | None = None) -> tuple[int, int] | None:
+    """(start, end) in months for one extracted job, or None if the dates can't be read."""
+    today = today or date.today()
+    start, end = _parse_month(job.get("StartDate"), today), _parse_month(job.get("EndDate"), today)
+    if start is None or end is None or end < start:
+        return None
+    return start, end
+
+
+def months_covered(spans: list[tuple[int, int]]) -> int:
+    """Total months covered by possibly overlapping (start, end) spans; overlaps counted once."""
+    if not spans:
+        return 0
+    spans = sorted(spans)
     total, (cur_s, cur_e) = 0, spans[0]
     for s, e in spans[1:]:
         if s <= cur_e:
@@ -51,8 +67,7 @@ def years_from_history(work_history: list[dict], today: date | None = None) -> i
         else:
             total += cur_e - cur_s
             cur_s, cur_e = s, e
-    total += cur_e - cur_s
-    return round(total / 12)
+    return total + cur_e - cur_s
 
 _VALUE_KEYS = {
     "string": "valueString",
@@ -85,6 +100,34 @@ def confidences(fields: dict[str, Any]) -> dict[str, float]:
     return {k: round(v["confidence"], 3) for k, v in fields.items() if isinstance(v, dict) and "confidence" in v}
 
 
+# In many PDF fonts a capital I and a lowercase l look identical, so the text layer can turn
+# "Azure AI Search" into "Azure Al Search" and "OpenAI" into "OpenAl" (see decision 010).
+_AI_MISREADS = [
+    (re.compile(r"\b(Azure|Gen|Generative|Responsible|Conversational)\s+Al\b"), r"\1 AI"),
+    (re.compile(r"\bAl(?=\s+(Search|Foundry|Services|Studio|Engineer|Fundamentals|Agents?)\b)"), "AI"),
+    (re.compile(r"\b(Open|Gen)Al\b"), r"\1AI"),
+]
+
+
+def fix_ai_misreads(text: Any) -> Any:
+    if not isinstance(text, str):
+        return text
+    for pattern, repl in _AI_MISREADS:
+        text = pattern.sub(repl, text)
+    return text
+
+
+def _clean_jobs(jobs: list[dict] | None) -> list[dict]:
+    out = []
+    for j in jobs or []:
+        j = dict(j)
+        j["JobTitle"] = fix_ai_misreads(j.get("JobTitle"))
+        if j.get("Highlights") is not None:
+            j["Highlights"] = [fix_ai_misreads(h) for h in j["Highlights"] if isinstance(h, str) and h.strip()]
+        out.append(j)
+    return out
+
+
 def to_profile(candidate_id: str, source_file: str, cu_result: dict[str, Any]) -> dict[str, Any]:
     contents = cu_result.get("contents") or [{}]
     fields = contents[0].get("fields", {})
@@ -100,14 +143,14 @@ def to_profile(candidate_id: str, source_file: str, cu_result: dict[str, Any]) -
         "email": v.get("Email"),
         "phone": v.get("Phone"),
         "location": v.get("Location"),
-        "headline": v.get("Headline"),
+        "headline": fix_ai_misreads(v.get("Headline")),
         "role_family": v.get("RoleFamily"),
         # Prefer the deterministic calculation; keep the model's estimate for comparison.
         "years_experience": years_from_history(v.get("WorkHistory") or []) or v.get("TotalYearsExperience"),
         "years_experience_model": v.get("TotalYearsExperience"),
         "skills": clean_list(v.get("Skills")),
         "certifications": clean_certifications(clean_list(v.get("Certifications")), v.get("Education") or []),
-        "work_history": v.get("WorkHistory") or [],
+        "work_history": _clean_jobs(v.get("WorkHistory")),
         "education": v.get("Education") or [],
         # Facts a recruiter must not screen on. Kept separately so the screening step can drop them.
         "protected_flags": {
