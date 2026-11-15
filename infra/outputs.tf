@@ -34,3 +34,20 @@ output "appinsights_connection_string" {
   value     = azurerm_application_insights.appi.connection_string
   sensitive = true
 }
+
+output "app_url" {
+  value = var.deploy_app ? "https://${azurerm_container_app.app[0].ingress[0].fqdn}" : null
+}
+
+output "acr_name" {
+  value = var.deploy_app ? azurerm_container_registry.acr[0].name : null
+}
+
+# GitHub repository secrets for .github/workflows/eval-live.yml
+output "ci_client_id" {
+  value = local.ci_count == 1 ? azuread_application.ci[0].client_id : null
+}
+
+output "tenant_id" {
+  value = data.azurerm_client_config.current.tenant_id
+}

@@ -33,3 +33,6 @@ data/submissions/
 
 # Guardrail audit log (questions asked of the agent)
 logs/
+
+# CI / local evaluation output
+build/

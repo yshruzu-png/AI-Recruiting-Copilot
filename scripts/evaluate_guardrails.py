@@ -16,6 +16,7 @@ Usage:
     python scripts/generate_adversarial_data.py
     python scripts/evaluate_guardrails.py            # offline
     python scripts/evaluate_guardrails.py --live     # + Azure
+    python scripts/evaluate_guardrails.py --pool truth --out build/eval   # CI: no data/extracted/ needed
 """
 import argparse
 import asyncio
@@ -30,7 +31,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from copilot import guardrails  # noqa: E402
 from copilot.agent_tools import RecruitingTools, keyword_search_backend, load_jobs, load_profiles  # noqa: E402
 from copilot.guardrail_eval import (ATTACK_PROMPTS, BENIGN_PROMPTS, offline_profile, score_prompts,  # noqa: E402
-                                    score_resumes)
+                                    score_resumes, truth_profiles)
 from copilot.requirements import load_requirements  # noqa: E402
 
 ADV = ROOT / "data" / "synthetic" / "adversarial"
@@ -149,11 +150,19 @@ def to_markdown(rep: dict) -> str:
 async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--live", action="store_true", help="also use Content Understanding, Prompt Shields and the live agent")
+    ap.add_argument("--pool", choices=["extracted", "truth"], default="extracted",
+                    help="clean pool: Content Understanding profiles (default) or built from ground truth (CI)")
+    ap.add_argument("--out", type=Path, default=OUT.parent, help="folder for guardrails_report.md/.json")
     args = ap.parse_args()
+    out_md = args.out / OUT.name
     if not (ADV / "labels.json").exists():
         sys.exit("No adversarial resumes. Run: python scripts/generate_adversarial_data.py")
     labels = json.loads((ADV / "labels.json").read_text())
-    clean = load_profiles()
+    if args.pool == "truth":
+        gt = json.loads((ROOT / "data" / "synthetic" / "ground_truth.json").read_text())
+        clean = truth_profiles(gt, ROOT / "data" / "synthetic" / "resumes")
+    else:
+        clean = load_profiles(integrity=False)
     if not clean:
         sys.exit("No profiles in data/extracted/. Run scripts/extract_resumes.py first.")
     for p in clean.values():  # always re-check, so the report reflects the current rules
@@ -222,9 +231,10 @@ async def main() -> None:
     rep = {"mode": "live" if args.live else "offline", "resumes": resumes, "resume_rows": resume_rows,
            "prompts": prompts, "prompt_rows": prompt_rows, "shield_documents": shield_docs,
            "containment": cont, "agent_answers": agent_answers}
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(to_markdown(rep), encoding="utf-8")
-    OUT.with_suffix(".json").write_text(json.dumps(rep, indent=2, default=str), encoding="utf-8")
+    rep["pool"] = args.pool
+    out_md.parent.mkdir(parents=True, exist_ok=True)
+    out_md.write_text(to_markdown(rep), encoding="utf-8")
+    out_md.with_suffix(".json").write_text(json.dumps(rep, indent=2, default=str), encoding="utf-8")
 
     print(f"Tampered resumes held: {resumes['caught']}/{resumes['tampered']}   "
           f"clean wrongly held: {len(resumes['false_positives'])}/{resumes['clean']}")
@@ -234,7 +244,7 @@ async def main() -> None:
         print(f"Prompt Shields documents: {shield_docs['caught']}/{shield_docs['tampered']} injected resumes flagged, "
               f"{len(shield_docs['false_positives'])} false positives")
     print(f"Held candidates leaking into rankings/screens: {len(cont['leaks'])}")
-    print(f"Report: {OUT.relative_to(ROOT)}")
+    print(f"Report: {out_md}")
 
 
 if __name__ == "__main__":

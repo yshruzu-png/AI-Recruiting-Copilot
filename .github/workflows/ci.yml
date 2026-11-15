@@ -1,0 +1,58 @@
+# Every push and pull request: tests, offline red-team with gates, Terraform checks.
+# No Azure access needed; nothing here can spend money.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Generate synthetic + adversarial data (deterministic seeds)
+        run: |
+          python scripts/generate_synthetic_data.py
+          python scripts/generate_adversarial_data.py
+
+      - name: Unit tests
+        run: pytest -q
+
+      - name: Red-team the guardrails (offline)
+        run: python scripts/evaluate_guardrails.py --pool truth --out build/eval
+
+      - name: Evaluation gates
+        run: python scripts/check_eval_gates.py build/eval/guardrails_report.json
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guardrails-report
+          path: build/eval/
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate

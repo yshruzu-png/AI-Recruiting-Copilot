@@ -79,6 +79,25 @@ def offline_profile(label: dict[str, Any], folder: Path) -> dict[str, Any]:
     }
 
 
+def truth_profiles(ground_truth: dict[str, Any], resumes: Path) -> dict[str, dict[str, Any]]:
+    """
+    The 40 clean candidates as profiles, without Content Understanding: fields from the generator and
+    full text from each file's text layer. Lets CI measure false positives with no Azure access
+    (data/extracted/ is git-ignored and needs Azure to rebuild).
+    """
+    out = {}
+    for c in ground_truth["candidates"]:
+        path = resumes / Path(c["file"]).name
+        out[c["id"]] = {
+            "id": c["id"], "source_file": Path(c["file"]).name, "name": c["name"], "email": c["email"],
+            "headline": c["headline"], "role_family": c["family"], "years_experience": c["years_experience"],
+            "skills": c["skills"], "certifications": c["certifications"], "work_history": c["experience"],
+            "education": [{"Degree": e["degree"]} for e in c["education"]],
+            "markdown": text_layer(path) if path.exists() else "",
+        }
+    return out
+
+
 def score_resumes(verdicts: dict[str, dict], expected: dict[str, list[str]]) -> dict[str, Any]:
     """verdicts: {id: integrity}; expected: {id: [finding types]} with [] for clean resumes."""
     tampered = [cid for cid, exp in expected.items() if exp]

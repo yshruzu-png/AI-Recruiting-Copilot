@@ -1,0 +1,57 @@
+// Recruiting Copilot: Application Insights queries (Logs blade, or pin to a dashboard).
+// Spans: copilot.turn = one guarded turn; Agent Framework adds invoke_agent / chat / execute_tool spans under it.
+// Metrics: copilot.turns, copilot.turns.blocked (by stage), copilot.output_problems (by check),
+//          gen_ai.client.token.usage and gen_ai.client.operation.duration from Agent Framework.
+
+// 1. Traffic and blocks per hour
+customMetrics
+| where name in ("copilot.turns", "copilot.turns.blocked")
+| summarize total = sum(valueSum) by name, bin(timestamp, 1h)
+| render timechart
+
+// 2. What is blocking turns: local rules, Prompt Shields or the Foundry content filter
+customMetrics
+| where name == "copilot.turns.blocked"
+| extend stage = tostring(customDimensions.stage)
+| summarize blocks = sum(valueSum) by stage
+| order by blocks desc
+
+// 3. Answers the output check changed (names redacted, invented candidate IDs withheld)
+customMetrics
+| where name == "copilot.output_problems"
+| extend check = tostring(customDimensions.check)
+| summarize count = sum(valueSum) by check, bin(timestamp, 1d)
+
+// 4. Turn latency, p50 / p95 (seconds)
+dependencies
+| where name == "copilot.turn"
+| summarize p50 = percentile(duration, 50) / 1000, p95 = percentile(duration, 95) / 1000, turns = count()
+    by bin(timestamp, 1h)
+| render timechart
+
+// 5. Tokens and estimated model cost per day.
+//    Set the prices to the current rates for your deployment (USD per 1M tokens): they change.
+let input_per_m = 0.40;
+let output_per_m = 1.60;
+customMetrics
+| where name == "gen_ai.client.token.usage"
+| extend kind = tostring(customDimensions["gen_ai.token.type"])
+| summarize tokens = sum(valueSum) by kind, day = bin(timestamp, 1d)
+| summarize input = sumif(tokens, kind == "input"), output = sumif(tokens, kind == "output") by day
+| extend est_cost_usd = round(input / 1e6 * input_per_m + output / 1e6 * output_per_m, 4)
+
+// 6. Which tools the agent calls, and how long they take
+dependencies
+| where name startswith "execute_tool"
+| summarize calls = count(), avg_ms = avg(duration), p95_ms = percentile(duration, 95) by name
+| order by calls desc
+
+// 7. One slow or blocked turn, end to end (paste an operation_Id from query 4 or 8)
+// union dependencies, requests, traces | where operation_Id == "<id>" | order by timestamp asc
+
+// 8. Recent blocked turns with the checks that fired (no question text: it isn't sent to telemetry)
+dependencies
+| where name == "copilot.turn" and tostring(customDimensions["copilot.blocked"]) == "True"
+| project timestamp, operation_Id, checks = customDimensions["copilot.checks"], duration
+| order by timestamp desc
+| take 50

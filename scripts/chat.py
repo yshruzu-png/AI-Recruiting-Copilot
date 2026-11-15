@@ -24,6 +24,7 @@ from copilot.agent import build_agent  # noqa: E402
 from copilot.agent_tools import RecruitingTools, azure_search_backend, load_jobs, load_profiles  # noqa: E402
 from copilot.guardrails import PromptShield, guarded_run  # noqa: E402
 from copilot.requirements import load_requirements  # noqa: E402
+from copilot.telemetry import setup_telemetry  # noqa: E402
 
 
 async def ask(agent, tools, session, question: str, show_tools: bool, shield, names) -> None:
@@ -44,6 +45,8 @@ async def main() -> None:
     ap.add_argument("--show-tools", action="store_true", help="print each tool call and guardrail finding")
     ap.add_argument("--no-shield", action="store_true", help="skip Azure Prompt Shields (local rules only)")
     args = ap.parse_args()
+    if setup_telemetry():  # APPLICATIONINSIGHTS_CONNECTION_STRING from .env
+        print("Tracing to Application Insights.")
 
     profiles = load_profiles()
     if not profiles:

@@ -366,48 +366,62 @@ class GuardedReply:
     input_problems: list[dict] = field(default_factory=list)
     output_problems: list[dict] = field(default_factory=list)
     raw_text: str | None = None  # the model's answer before redaction / withholding, for review
+    tool_calls: list[str] = field(default_factory=list)
+
+    @property
+    def cited(self) -> list[str]:
+        return sorted(set(ID_RE.findall(self.text)))
+
+    @property
+    def cited_count(self) -> int:
+        return len(self.cited)
 
 
 async def guarded_run(agent, tools, question: str, session=None, shield: PromptShield | None = None,
-                      names: Iterable[str] = (), audit_log: Path | None = AUDIT_LOG) -> GuardedReply:
+                      names: Iterable[str] = (), audit_log: Path | None = AUDIT_LOG,
+                      user: str | None = None) -> GuardedReply:
     """
     Run one agent turn with the guardrails around it:
     input check -> agent -> output check (redact PII; withhold an answer that cites made-up IDs).
+    The turn runs in a `copilot.turn` span (Week 6) and is written to the audit log.
+    `user` is the signed-in recruiter (from Entra ID when deployed), recorded in the audit log.
     """
-    inp = check_input(question, shield)
-    blocking = [p for p in inp if not p.get("advisory")]
-    if blocking:
-        reply = GuardedReply(BLOCKED_REPLY, blocked=True, input_problems=inp)
-    else:
-        start = len(tools.calls)
-        # remember IDs the recruiter typed (on the tools object, so the whole session shares them)
-        user_ids = getattr(tools, "user_ids", set()) | set(ID_RE.findall(question))
-        tools.user_ids = user_ids
-        try:
-            res = await agent.run(question, session=session)
-        except Exception as exc:
-            # The Foundry content filter (infra/content_filter.tf) rejects a flagged request with an error
-            # rather than an answer. Treat that as a block, not a crash; re-raise anything else.
-            if not is_content_filter_error(exc):
-                raise
-            reply = GuardedReply(BLOCKED_REPLY, blocked=True,
-                                 input_problems=inp + [{"check": "content_filter", "detail": str(exc)[:300]}])
-            if audit_log:
-                write_audit(audit_log, question, reply)
-            return reply
-        raw = (res.text or "").strip()
-        out = check_output(raw, tools.calls, names, user_ids)
-        text = redact(raw, out)
-        if any(p["check"] == "ungrounded_ids" for p in out):
-            bad = next(p["detail"] for p in out if p["check"] == "ungrounded_ids")
-            text = (f"I withheld this answer because it mentioned candidates that no search returned ({bad}). "
-                    "Please ask again, or ask me to rank a specific job.")
-        reply = GuardedReply(text, blocked=False, input_problems=inp, output_problems=out,
-                             raw_text=raw if out else None)
-        reply.tool_calls = [c["tool"] for c in tools.calls[start:]]  # type: ignore[attr-defined]
+    from copilot import telemetry
+
+    with telemetry.turn_span(**{"copilot.question_chars": len(question)}) as span:
+        reply = await _guarded_turn(agent, tools, question, session, shield, names)
+        telemetry.record_turn(span, reply)
     if audit_log:
-        write_audit(audit_log, question, reply)
+        write_audit(audit_log, question, reply, user)
     return reply
+
+
+async def _guarded_turn(agent, tools, question, session, shield, names) -> GuardedReply:
+    inp = check_input(question, shield)
+    if any(not p.get("advisory") for p in inp):
+        return GuardedReply(BLOCKED_REPLY, blocked=True, input_problems=inp)
+    start = len(tools.calls)
+    # remember IDs the recruiter typed (on the tools object, so the whole session shares them)
+    user_ids = getattr(tools, "user_ids", set()) | set(ID_RE.findall(question))
+    tools.user_ids = user_ids
+    try:
+        res = await agent.run(question, session=session)
+    except Exception as exc:
+        # The Foundry content filter (infra/content_filter.tf) rejects a flagged request with an error
+        # rather than an answer. Treat that as a block, not a crash; re-raise anything else.
+        if not is_content_filter_error(exc):
+            raise
+        return GuardedReply(BLOCKED_REPLY, blocked=True,
+                            input_problems=inp + [{"check": "content_filter", "detail": str(exc)[:300]}])
+    raw = (res.text or "").strip()
+    out = check_output(raw, tools.calls, names, user_ids)
+    text = redact(raw, out)
+    if any(p["check"] == "ungrounded_ids" for p in out):
+        bad = next(p["detail"] for p in out if p["check"] == "ungrounded_ids")
+        text = (f"I withheld this answer because it mentioned candidates that no search returned ({bad}). "
+                "Please ask again, or ask me to rank a specific job.")
+    return GuardedReply(text, blocked=False, input_problems=inp, output_problems=out,
+                        raw_text=raw if out else None, tool_calls=[c["tool"] for c in tools.calls[start:]])
 
 
 def is_content_filter_error(exc: BaseException) -> bool:
@@ -417,12 +431,12 @@ def is_content_filter_error(exc: BaseException) -> bool:
                                    "jailbreak", "contentfilter"))
 
 
-def write_audit(path: Path, question: str, reply: GuardedReply) -> None:
+def write_audit(path: Path, question: str, reply: GuardedReply, user: str | None = None) -> None:
     """One JSON line per turn. Holds candidate IDs only: names never reach the agent, so never reach this log."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    entry = {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "question": question[:MAX_QUESTION_CHARS],
-             "blocked": reply.blocked, "input_problems": reply.input_problems,
-             "output_problems": reply.output_problems, "tools": getattr(reply, "tool_calls", []),
-             "cited": sorted(set(ID_RE.findall(reply.text)))}
+    entry = {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "user": user,
+             "question": question[:MAX_QUESTION_CHARS], "blocked": reply.blocked,
+             "input_problems": reply.input_problems, "output_problems": reply.output_problems,
+             "tools": reply.tool_calls, "cited": reply.cited}
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")

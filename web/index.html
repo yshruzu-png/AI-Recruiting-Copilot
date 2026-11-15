@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Recruiting Copilot</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="mark" aria-hidden="true">◆</span>
+      <div>
+        <h1>AI Recruiting Copilot</h1>
+        <p class="sub">Blind, evidence-based screening. The model explains; code scores; a recruiter decides.</p>
+      </div>
+    </div>
+    <div id="user" class="user"></div>
+  </header>
+
+  <main>
+    <aside>
+      <section>
+        <h2>Open roles</h2>
+        <ul id="jobs" class="chips"></ul>
+      </section>
+      <section>
+        <h2>Requests for Resumes</h2>
+        <ul id="requests" class="chips"></ul>
+      </section>
+      <section id="held-section" hidden>
+        <h2>Held for review</h2>
+        <p class="note">Hidden text or instructions aimed at an AI. Never scored; review these by hand.</p>
+        <ul id="held" class="held"></ul>
+      </section>
+      <section class="guard">
+        <h2>Guardrails on every turn</h2>
+        <ul>
+          <li>Input: local rules + Prompt Shields</li>
+          <li>Model: Foundry content filter</li>
+          <li>Output: no names or contact details, no invented candidates</li>
+        </ul>
+      </section>
+    </aside>
+
+    <section class="chat" aria-live="polite">
+      <div id="log" class="log">
+        <div class="msg bot">
+          <p>Ask me to shortlist a role, compare a candidate to a job, or screen a Request for Resumes.
+             I only see blind profiles: candidate IDs, skills, dated roles and certifications.</p>
+        </div>
+      </div>
+      <form id="ask" autocomplete="off">
+        <textarea id="q" rows="2" maxlength="4000" placeholder="e.g. Who are the top 5 candidates for JD-001, and why?" required></textarea>
+        <button type="submit" id="send">Ask</button>
+      </form>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

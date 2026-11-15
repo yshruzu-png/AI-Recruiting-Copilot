@@ -81,3 +81,33 @@ variable "content_filter_threshold" {
     error_message = "Use Low, Medium or High."
   }
 }
+
+variable "blocked_turns_alert_threshold" {
+  description = "Email an alert when more than this many turns are blocked by guardrails in one hour"
+  type        = number
+  default     = 10
+}
+
+variable "deploy_app" {
+  description = "Deploy the API to Container Apps (registry + app). scripts/deploy.sh sets this."
+  type        = bool
+  default     = false
+}
+
+variable "image_tag" {
+  description = "Tag of the recruiting-copilot image in the registry"
+  type        = string
+  default     = "latest"
+}
+
+variable "enable_auth" {
+  description = "Require Entra ID sign-in in front of the deployed app"
+  type        = bool
+  default     = true
+}
+
+variable "github_repository" {
+  description = "owner/repo allowed to run the live evaluation workflow with OIDC; empty = no CI identity"
+  type        = string
+  default     = ""
+}

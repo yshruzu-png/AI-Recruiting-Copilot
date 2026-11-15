@@ -1,0 +1,22 @@
+# Only what the Dockerfile copies is needed; keep secrets, state and personal files out of the build context.
+.env
+*.env
+.venv/
+venv/
+.git/
+infra/
+logs/
+docs/
+tests/
+scripts/
+Claude outputs/
+data/submissions/
+data/synthetic/adversarial/
+data/synthetic/job-descriptions/
+data/synthetic/requests/
+data/extracted/raw/
+data/extracted/requests/raw/
+**/__pycache__/
+.pytest_cache/
+*.tfstate*
+tfplan

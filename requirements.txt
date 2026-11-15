@@ -21,3 +21,9 @@ agent-framework-foundry>=1.15
 
 # Week 5: guardrails (hidden-text scan of PDF resumes)
 pdfplumber>=0.11
+
+# Week 6: telemetry, API, deployment
+azure-monitor-opentelemetry>=1.6
+fastapi>=0.115
+uvicorn[standard]>=0.30
+httpx>=0.27

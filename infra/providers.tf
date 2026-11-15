@@ -18,6 +18,10 @@ terraform {
       source  = "hashicorp/time"
       version = "~> 0.12"
     }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -43,3 +47,6 @@ provider "azurerm" {
 provider "azapi" {
   subscription_id = var.subscription_id
 }
+
+# Week 6: app registrations for sign-in (app.tf) and the CI identity (ci_identity.tf)
+provider "azuread" {}
