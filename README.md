@@ -17,6 +17,8 @@ All measured on synthetic data (40 resumes, 5 jobs, 4 Requests for Resumes), liv
 | [Agent](docs/eval/agent_report.md): grounded answers, baseline top-5 agreement, fairness probes declined | 100% / 100% / 3 of 3 |
 | [Guardrails](docs/eval/guardrails_report.md): tampered resumes held, clean resumes wrongly held | 7/7, 0/43 |
 | [Guardrails](docs/eval/guardrails_report.md): attack prompts blocked, ordinary questions wrongly blocked | 8/10, 0/18 |
+| [Foundry evaluators](docs/eval/foundry_agent_report.md) (LLM judge): relevance, coherence, task adherence | 10/10 each |
+| [Foundry evaluators](docs/eval/foundry_agent_report.md): tool-call accuracy | 6/7 (3 refusals called no tools, so nothing to grade) |
 | Offline tests run on every push, with evaluation gates | 91 |
 
 **Design in one line:** the model explains, code scores, a recruiter decides. Candidates are IDs to the model (decision 016), scores and compliance are computed in code (014, 021), nothing leaves without a named recruiter's approval (022), and guardrails sit outside the model (025–027). Every decision and its trade-off is in [docs/decisions.md](docs/decisions.md); the [demo script](docs/demo.md) walks through it in 3 minutes.
@@ -371,7 +373,14 @@ In GitHub: **Settings → Environments → New environment** `azure-live`. Add s
 ```bash
 python scripts/evaluate_agent_foundry.py         # -> docs/eval/foundry_agent_report.md + a run in the Foundry portal
 ```
-The same 10 agent questions, scored by an LLM judge in Foundry for relevance, coherence, task adherence and tool-call accuracy. They run beside the Week 3 code checks, not instead of them: code checks facts, the judge rates quality, and a judge can mark a correct refusal as "not relevant" (decision 039).
+The same 10 agent questions, scored by an LLM judge in Foundry for relevance, coherence, task adherence and tool-call accuracy.
+
+| Evaluator | Result | Notes |
+|---|---|---|
+| Relevance | 10/10 | scores 4–5 out of 5 |
+| Coherence | 10/10 | scores 4–5 out of 5 |
+| Task adherence | 10/10 | pass/fail; includes the 3 fairness refusals, which the judge agreed followed the instructions |
+| Tool-call accuracy | 6/7 | the 3 refusals call no tools, so they're not graded. The one fail (2/5) is the impossible-role question: the agent made one filtered search, found no match and said so (a pass in the Week 3 check). The judge's reasoning is in the Foundry portal run | They run beside the Week 3 code checks, not instead of them: code checks facts, the judge rates quality, and a judge can mark a correct refusal as "not relevant" (decision 039).
 
 ### Demo
 
