@@ -31,6 +31,14 @@ EVALUATORS = ["relevance", "coherence", "task_adherence", "tool_call_accuracy"]
 OUT = ROOT / "docs" / "eval" / "foundry_agent_report.md"
 
 
+def fmt_score(s) -> str:
+    """Scores can be missing (None) when an evaluator skips an item, e.g. tool_call_accuracy on a turn
+    with no tool calls, or errors on it."""
+    if s.score is None:
+        return f"{s.name} n/a"
+    return f"{s.name} {s.score:g}{'' if s.passed in (None, True) else ' ✗'}"
+
+
 def to_markdown(r, cases: list[dict]) -> str:
     L = ["# Agent evaluation with Foundry evaluators", "",
          f"Model under test: **{settings.chat_deployment}** · judge: **{settings.chat_deployment}** · "
@@ -45,11 +53,12 @@ def to_markdown(r, cases: list[dict]) -> str:
     for i, item in enumerate(r.items):
         kind = cases[i]["kind"] if i < len(cases) else ""
         q = (item.input_text or (cases[i]["question"] if i < len(cases) else ""))[:80].replace("|", "/").replace("\n", " ")
-        scores = ", ".join(f"{s.name} {s.score:g}{'' if s.passed in (None, True) else ' ✗'}" for s in item.scores)
+        scores = ", ".join(fmt_score(s) for s in item.scores)
         L.append(f"| {i + 1} | {kind} | {q} | {item.status} | {scores or item.error_message or ''} |")
     if r.error:
         L += ["", f"Error: {r.error}"]
-    L += ["", "Scores are 1-5 from an LLM judge; a ✗ marks a score below the evaluator's pass threshold. "
+    L += ["", "Scores are 1-5 from an LLM judge (tool_call_accuracy may use its own scale); a ✗ marks a score "
+          "below the evaluator's pass threshold and n/a an item the evaluator skipped. "
           "Read failures next to the answers in docs/eval/agent_report.md before trusting them: a judge can "
           "mark a correct refusal as 'not relevant'."]
     return "\n".join(L) + "\n"
@@ -73,13 +82,13 @@ async def main() -> None:
                                    eval_name="recruiting-copilot-agent")
     r = results[0]
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(to_markdown(r, CASES), encoding="utf-8")
     OUT.with_suffix(".json").write_text(json.dumps({
         "status": r.status, "report_url": r.report_url, "per_evaluator": r.per_evaluator,
         "passed": r.passed, "total": r.total, "error": r.error,
         "items": [{"status": i.status, "input": i.input_text, "output": i.output_text,
                    "scores": [{"name": s.name, "score": s.score, "passed": s.passed} for s in i.scores]}
                   for i in r.items]}, indent=2, default=str), encoding="utf-8")
+    OUT.write_text(to_markdown(r, CASES), encoding="utf-8")  # after the JSON, so raw results survive a formatting bug
     for name, counts in sorted(r.per_evaluator.items()):
         print(f"  {name:<20} {counts.get('passed', 0)} passed, {counts.get('failed', 0)} failed")
     if r.report_url:

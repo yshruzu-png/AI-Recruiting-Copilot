@@ -1,0 +1,297 @@
+{
+  "status": "completed",
+  "report_url": "https://ai.azure.com/nextgen/r/rGwqps_7RGWkNPn-9hdZdg,rg-recruitcopilot,,aif-recruitcopilot-0fhi5,proj-recruiting/build/evaluations/eval_249eb4b528aa4f61bcbcdeead05b8482/run/evalrun_51dceb153c2043c283c52448cd71e096",
+  "per_evaluator": {
+    "relevance": {
+      "passed": 10,
+      "failed": 0
+    },
+    "coherence": {
+      "passed": 10,
+      "failed": 0
+    },
+    "task_adherence": {
+      "passed": 10,
+      "failed": 0
+    },
+    "tool_call_accuracy": {
+      "passed": 6,
+      "failed": 1
+    }
+  },
+  "passed": 9,
+  "total": 10,
+  "error": null,
+  "items": [
+    {
+      "status": "completed",
+      "input": null,
+      "output": null,
+      "scores": [
+        {
+          "name": "relevance",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "coherence",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "task_adherence",
+          "score": 1.0,
+          "passed": true
+        },
+        {
+          "name": "tool_call_accuracy",
+          "score": 5.0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "status": "completed",
+      "input": null,
+      "output": null,
+      "scores": [
+        {
+          "name": "relevance",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "coherence",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "task_adherence",
+          "score": 1.0,
+          "passed": true
+        },
+        {
+          "name": "tool_call_accuracy",
+          "score": 5.0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "status": "completed",
+      "input": null,
+      "output": null,
+      "scores": [
+        {
+          "name": "relevance",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "coherence",
+          "score": 4.0,
+          "passed": true
+        },
+        {
+          "name": "task_adherence",
+          "score": 1.0,
+          "passed": true
+        },
+        {
+          "name": "tool_call_accuracy",
+          "score": 5.0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "status": "completed",
+      "input": null,
+      "output": null,
+      "scores": [
+        {
+          "name": "relevance",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "coherence",
+          "score": 4.0,
+          "passed": true
+        },
+        {
+          "name": "task_adherence",
+          "score": 1.0,
+          "passed": true
+        },
+        {
+          "name": "tool_call_accuracy",
+          "score": 5.0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "status": "completed",
+      "input": null,
+      "output": null,
+      "scores": [
+        {
+          "name": "relevance",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "coherence",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "task_adherence",
+          "score": 1.0,
+          "passed": true
+        },
+        {
+          "name": "tool_call_accuracy",
+          "score": 5.0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "status": "completed",
+      "input": null,
+      "output": null,
+      "scores": [
+        {
+          "name": "relevance",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "coherence",
+          "score": 4.0,
+          "passed": true
+        },
+        {
+          "name": "task_adherence",
+          "score": 1.0,
+          "passed": true
+        },
+        {
+          "name": "tool_call_accuracy",
+          "score": 5.0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "status": "completed",
+      "input": null,
+      "output": null,
+      "scores": [
+        {
+          "name": "relevance",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "coherence",
+          "score": 4.0,
+          "passed": true
+        },
+        {
+          "name": "task_adherence",
+          "score": 1.0,
+          "passed": true
+        },
+        {
+          "name": "tool_call_accuracy",
+          "score": null,
+          "passed": null
+        }
+      ]
+    },
+    {
+      "status": "completed",
+      "input": null,
+      "output": null,
+      "scores": [
+        {
+          "name": "relevance",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "coherence",
+          "score": 4.0,
+          "passed": true
+        },
+        {
+          "name": "task_adherence",
+          "score": 1.0,
+          "passed": true
+        },
+        {
+          "name": "tool_call_accuracy",
+          "score": null,
+          "passed": null
+        }
+      ]
+    },
+    {
+      "status": "completed",
+      "input": null,
+      "output": null,
+      "scores": [
+        {
+          "name": "relevance",
+          "score": 5.0,
+          "passed": true
+        },
+        {
+          "name": "coherence",
+          "score": 4.0,
+          "passed": true
+        },
+        {
+          "name": "task_adherence",
+          "score": 1.0,
+          "passed": true
+        },
+        {
+          "name": "tool_call_accuracy",
+          "score": null,
+          "passed": null
+        }
+      ]
+    },
+    {
+      "status": "completed",
+      "input": null,
+      "output": null,
+      "scores": [
+        {
+          "name": "relevance",
+          "score": 4.0,
+          "passed": true
+        },
+        {
+          "name": "coherence",
+          "score": 4.0,
+          "passed": true
+        },
+        {
+          "name": "task_adherence",
+          "score": 1.0,
+          "passed": true
+        },
+        {
+          "name": "tool_call_accuracy",
+          "score": 2.0,
+          "passed": false
+        }
+      ]
+    }
+  ]
+}
