@@ -30,3 +30,6 @@ Claude outputs/
 
 # Submission drafts and exports contain candidate names
 data/submissions/
+
+# Guardrail audit log (questions asked of the agent)
+logs/

@@ -16,7 +16,7 @@ from typing import Annotated, Any, Callable
 
 from pydantic import Field
 
-from copilot import matching, screening
+from copilot import guardrails, matching, screening
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -65,13 +65,15 @@ def public_job(j: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
-def load_profiles(folder: Path | None = None) -> dict[str, dict[str, Any]]:
+def load_profiles(folder: Path | None = None, integrity: bool = True) -> dict[str, dict[str, Any]]:
+    """Extracted profiles. With integrity=True (default), each gets a Week 5 integrity verdict if it
+    doesn't have one yet, so resumes with hidden text or AI-directed instructions can be held back."""
     folder = folder or ROOT / "data" / "extracted"
     profiles = {}
     for path in sorted(folder.glob("CAND-*.json")):
         p = json.loads(path.read_text(encoding="utf-8"))
         profiles[p["id"]] = p
-    return profiles
+    return guardrails.ensure_integrity(profiles) if integrity else profiles
 
 
 def stale_profiles(profiles: dict[str, dict]) -> list[str]:
@@ -96,6 +98,8 @@ class RecruitingTools:
         self.profiles, self.jobs, self._search = profiles, jobs, search
         self.requests = requests or {}  # public-sector Requests for Resumes (Week 4)
         self.calls: list[dict[str, Any]] = []  # audit log: tool, arguments and result of every call
+        # Week 5: resumes with hidden text or instructions aimed at an AI never reach scoring or the model
+        self.held = guardrails.held_for_review(profiles)
 
     def _log(self, name: str, **args) -> None:
         self.calls.append({"tool": name, "args": args})
@@ -106,6 +110,16 @@ class RecruitingTools:
 
     def _job(self, job_id: str) -> dict | None:
         return self.jobs.get(job_id.strip().upper())
+
+    def _held(self, candidate_id: str) -> dict[str, Any] | None:
+        cid = candidate_id.strip().upper()
+        if cid in self.held:
+            return {"candidate_id": cid, "held_for_review": self.held[cid],
+                    "note": "This resume is held until a recruiter reviews it. Do not assess it."}
+        return None
+
+    def _held_note(self) -> dict[str, Any]:
+        return {"held_for_review": self.held} if self.held else {}
 
     # -- jobs ---------------------------------------------------------------
     def list_jobs(self) -> list[dict[str, Any]]:
@@ -135,11 +149,14 @@ class RecruitingTools:
         if career_track and career_track not in ROLE_FAMILIES:
             return self._ret([{"error": f"Unknown career track '{career_track}'. Use one of {ROLE_FAMILIES}."}])
         hits = self._search(query, top=top, role_family=career_track, min_years=min_years, skill=required_skill)
-        return self._ret([blind_summary(self.profiles[h["id"]]) for h in hits if h["id"] in self.profiles])
+        return self._ret([blind_summary(self.profiles[h["id"]]) for h in hits
+                          if h["id"] in self.profiles and h["id"] not in self.held])
 
     def get_candidate(self, candidate_id: Annotated[str, Field(description="Candidate ID, e.g. CAND-012")]) -> dict[str, Any]:
         """Get one candidate's blind profile: skills, certifications, work history and degrees."""
         self._log("get_candidate", candidate_id=candidate_id)
+        if held := self._held(candidate_id):
+            return self._ret(held)
         p = self.profiles.get(candidate_id.strip().upper())
         return self._ret(blind_profile(p) if p else {"error": f"No candidate with ID {candidate_id}."})
 
@@ -150,6 +167,8 @@ class RecruitingTools:
     ) -> dict[str, Any]:
         """Score one candidate against one job: required skills matched and missing, nice-to-haves, years."""
         self._log("compare_candidate_to_job", candidate_id=candidate_id, job_id=job_id)
+        if held := self._held(candidate_id):
+            return self._ret(held)
         p, job = self.profiles.get(candidate_id.strip().upper()), self._job(job_id)
         if not p or not job:
             return self._ret({"error": "Unknown candidate or job ID."})
@@ -168,12 +187,12 @@ class RecruitingTools:
             return self._ret({"error": f"No job with ID {job_id}. Call list_jobs."})
         query = f"{job['title']}. Required: {', '.join(job['required'])}. Nice to have: {', '.join(job['nice'])}"
         hits = self._search(query, top=RETRIEVE_FOR_RANKING)
-        pool = [self.profiles[h["id"]] for h in hits if h["id"] in self.profiles]
+        pool = [self.profiles[h["id"]] for h in hits if h["id"] in self.profiles and h["id"] not in self.held]
         ranked = matching.rank(pool, job, top=top)
         for r in ranked:
             r["current_title"] = self.profiles[r["candidate_id"]].get("headline")
         return self._ret({"job": public_job(job), "scoring": matching.WEIGHTS,
-                          "candidates_considered": len(pool), "shortlist": ranked})
+                          "candidates_considered": len(pool), "shortlist": ranked} | self._held_note())
 
     # -- Requests for Resumes (public sector) -------------------------------
     def list_requests(self) -> list[dict[str, Any]]:
@@ -193,7 +212,7 @@ class RecruitingTools:
         req = self.requests.get(request_id.strip().upper())
         if not req:
             return self._ret({"error": f"No request with ID {request_id}. Call list_requests."})
-        results = screening.screen(req, list(self.profiles.values()))
+        results = screening.screen(req, [p for cid, p in self.profiles.items() if cid not in self.held])
         rows = [{"candidate_id": r["candidate_id"], "compliance": r["compliance"],
                  "points": r["points"], "points_max": r["points_max"],
                  "mandatory": {m["id"]: f"{m['status']} ({m['evidence_years']} yrs shown)" for m in r["mandatory"]},
@@ -204,7 +223,8 @@ class RecruitingTools:
                                       "rated": [{"id": c["id"], "text": c["text"], "points": c.get("points")}
                                                 for c in req.get("rated") or []]},
                           "counts": counts, "candidates": rows,
-                          "note": "verify = skill listed but not shown in a dated role; recruiter must confirm."})
+                          "note": "verify = skill listed but not shown in a dated role; recruiter must confirm."}
+                         | self._held_note())
 
     def as_agent_tools(self) -> list:
         """Wrap the methods as Microsoft Agent Framework function tools."""

@@ -10,6 +10,7 @@ import argparse
 import json
 import mimetypes
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -22,6 +23,7 @@ from azure.storage.blob import BlobServiceClient  # noqa: E402
 
 from copilot.config import settings  # noqa: E402
 from copilot.content_understanding import ContentUnderstandingClient  # noqa: E402
+from copilot.guardrails import assess_profile, source_path  # noqa: E402
 from copilot.profiles import to_profile  # noqa: E402
 
 ANALYZER_ID = "resumeAnalyzer"
@@ -42,6 +44,7 @@ def main() -> None:
         raws = sorted((OUT / "raw").glob("CAND-*.json"))
         for raw in raws:
             profile = to_profile(raw.stem, raw.stem, json.loads(raw.read_text()))
+            profile["integrity"] = assess_profile(profile, source_path(profile))
             (OUT / f"{raw.stem}.json").write_text(json.dumps(profile, indent=2))
         print(f"Rebuilt {len(raws)} profiles from {OUT / 'raw'}")
         return
@@ -66,6 +69,11 @@ def main() -> None:
         cand_id = Path(name).stem
         (OUT / "raw" / f"{cand_id}.json").write_text(json.dumps(result, indent=2))
         profile = to_profile(cand_id, f"resumes/{name}", result)
+        # Week 5: scan the original file for hidden text, and the extracted text for AI-directed instructions
+        with tempfile.TemporaryDirectory() as tmp:
+            local = Path(tmp) / Path(name).name
+            local.write_bytes(data)
+            profile["integrity"] = assess_profile(profile, local)
         (OUT / f"{cand_id}.json").write_text(json.dumps(profile, indent=2))
         return name, time.time() - start
 
@@ -82,6 +90,10 @@ def main() -> None:
                 print(f"  [{i:>2}/{len(blobs)}] {name:<16} FAILED: {str(exc)[:200]}")
 
     print(f"\nDone: {len(blobs) - len(failures)} succeeded, {len(failures)} failed -> {OUT}")
+    held = [p.stem for p in OUT.glob("CAND-*.json")
+            if json.loads(p.read_text()).get("integrity", {}).get("status") == "review"]
+    if held:
+        print(f"Held for recruiter review (hidden text or AI-directed instructions): {', '.join(sorted(held))}")
     if failures:
         sys.exit(1)
 

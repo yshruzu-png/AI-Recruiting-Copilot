@@ -18,3 +18,6 @@ openai>=1.50
 # Week 3: recruiting agent (Microsoft Agent Framework + Foundry model)
 agent-framework-core>=1.22
 agent-framework-foundry>=1.15
+
+# Week 5: guardrails (hidden-text scan of PDF resumes)
+pdfplumber>=0.11

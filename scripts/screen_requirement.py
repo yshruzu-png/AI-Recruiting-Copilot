@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from copilot.agent_tools import load_profiles, stale_profiles  # noqa: E402
+from copilot.guardrails import held_for_review  # noqa: E402
 from copilot.requirements import load_requirements, skill_vocabulary  # noqa: E402
 from copilot.screening import NOT_MET, screen  # noqa: E402
 from copilot.submission import build_draft, save_draft, write_summary  # noqa: E402
@@ -50,7 +51,10 @@ async def main() -> None:
     if stale:
         print(f"WARNING: {', '.join(stale)} have no job highlights and will look like they have no experience. "
               f"Re-run: python scripts/extract_resumes.py --only {' '.join(stale)}\n")
-    results = screen(req, list(profiles.values()))
+    held = held_for_review(profiles)
+    if held:
+        print(f"HELD FOR REVIEW (not screened): {', '.join(f'{c} ({r})' for c, r in held.items())}\n")
+    results = screen(req, [p for cid, p in profiles.items() if cid not in held])
     print(f"{req['id']} {req['title']}: {len(results)} candidates screened\n")
     print(f"{'':6}  {'Candidate':<9}  {'Points':>9}  Mandatory")
     for r in results[:12]:

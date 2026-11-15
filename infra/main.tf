@@ -164,6 +164,7 @@ resource "azapi_resource" "chat" {
         name    = var.chat_model_name
         version = var.chat_model_version
       }
+      raiPolicyName = azapi_resource.content_filter.name # Week 5: infra/content_filter.tf
     }
   }
 }

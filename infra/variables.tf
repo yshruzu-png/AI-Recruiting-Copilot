@@ -71,3 +71,13 @@ variable "tags" {
     purpose = "portfolio"
   }
 }
+
+variable "content_filter_threshold" {
+  description = "Severity at which the chat deployment blocks hate / sexual / violence / self-harm content: Low, Medium or High"
+  type        = string
+  default     = "Medium"
+  validation {
+    condition     = contains(["Low", "Medium", "High"], var.content_filter_threshold)
+    error_message = "Use Low, Medium or High."
+  }
+}
